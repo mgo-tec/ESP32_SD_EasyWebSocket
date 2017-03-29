@@ -1,0 +1,229 @@
+';
+        var wsUri = 'ws://' + MyLocal_IP;
+        var websocket = null;
+        var LastTime1;
+        var RateTime = 0;
+        var data_tmp;
+        var id_tmp;
+        var dataCAV1_tmp;
+        var dataCAV2_tmp;
+        
+        function init(){
+          LastTime1 = new Date().getTime();
+          testWebSocket();
+        };
+
+        function testWebSocket(){      
+          if(websocket == null){
+            websocket = new WebSocket(wsUri);
+//            websocket.binaryType = 'blob';
+            websocket.binaryType = 'arraybuffer';
+            websocket.onopen = function(evt) { onOpen(evt) };
+            websocket.onclose = function(evt) { onClose(evt) };
+            websocket.onmessage = function(evt) { onMessage(evt) };
+            websocket.onerror = function(evt) { onError(evt) };
+          }
+        };
+
+        function onOpen(evt){
+          writeToStatus('WebSocket.CONNECTED');
+        };
+
+        function onClose(evt){
+          if(websocket.readyState == 2){
+            writeToStatus('WebSocket.Closing');
+          }else if(websocket.readyState == 3){
+            writeToStatus('WebSocket.Disconnected');
+          }
+          websocket = null;
+        };
+
+        function onMessage(evt){
+          if( websocket.readyState == 1){
+            if( websocket.bufferedAmount == 0){
+              evt.stopPropagation();
+              var rev = evt.data;
+              var rev_str = rev.split('|');
+              var split_str1 = rev_str[0];
+              var split_strID = rev_str[1];
+              var ms1 = document.getElementById(split_strID);
+              ms1.innerHTML = split_str1;
+            }
+          }
+        };
+
+        function onError(evt){
+          writeToStatus("<span style='color: red;'>ERROR:</span> " + evt.data);
+        };
+
+        function doSend(data, id){
+          if(data<0) data = 0;
+          if(data>999) data = 999;
+          if(!((data_tmp == data) && (id_tmp == id))){
+            var str_data = String(data);
+            var str_data_len = str_data.length;
+            switch(str_data_len){
+              case 1:
+                str_data = '00' + str_data;
+                break;
+              case 2:
+                str_data = '0' + str_data;
+                break;    
+            }
+            var str = str_data + '|' + id + ';';
+            var LastTime2 = new Date().getTime();
+            if(LastTime2-LastTime1 > RateTime){
+              WS_send(str);
+              LastTime1 = new Date().getTime();
+            }
+            data_tmp = data;
+            id_tmp = id;
+          }
+        };
+        
+        function DoSend2(data, id){
+          if(data<0) data = 0;
+          if(data>999) data = 999;
+          var str_data = String(data);
+          var str_data_len = str_data.length;
+          switch(str_data_len){
+            case 1:
+              str_data = '00' + str_data;
+              break;
+            case 2:
+              str_data = '0' + str_data;
+              break;    
+          }
+          var str = str_data + '|' + id + ';';
+          WS_send(str);
+        };
+        
+        function doSend_canvas(dataCAV1, dataCAV2){
+          if(!((dataCAV1_tmp == dataCAV1) && (dataCAV2_tmp == dataCAV2))){
+            var str = String(dataCAV1) + '|' + String(dataCAV2) + ';';
+            var LastTime2 = new Date().getTime();
+            if(LastTime2-LastTime1 > RateTime){
+              WS_send(str);
+              LastTime1 = new Date().getTime();
+            }
+            dataCAV1_tmp = dataCAV1;
+            dataCAV2_tmp = dataCAV2;
+          }
+        };
+        
+        function doSend_TextBox(t_id){
+          var text_data = document.getElementById(t_id).value;
+          var text_bytes = StrGetBytes(unescape(encodeURIComponent(t_id + '|' + text_data)));
+          if(text_bytes>120){
+            alert('Character too many! '+text_bytes+'byte.\r\n'+'More than 120 bytes are useless');
+            text_data ='';
+          }
+          doSend_canvas(t_id,text_data);
+        }
+        
+        function WS_send(str){
+          if( websocket.readyState == 1){
+            if( websocket.bufferedAmount == 0){
+              console.log(str+'\r'+'\n');
+              websocket.send(str);
+            }
+          }
+        };
+
+        function WS_close(){
+          websocket.close(4500,'Client Closed');
+        };
+
+        function writeToStatus(message){
+          var _wsStatus_ = document.getElementById('__wsStatus__');
+          _wsStatus_.innerHTML = message;
+        };
+
+        function OnOffBt(th, iid){
+          if (th.value == 'OFF'){
+            th.value = 'ON';
+            doSend(100,iid);
+          } else {
+            th.value = 'OFF';
+            doSend(0,iid);
+          }
+        };
+        
+        function onButtonRate(){
+          var SelRateVal = document.fRate.selRate.value;
+          var sel_target = document.getElementById('RateTxt');
+          sel_target.innerHTML = SelRateVal;
+          RateTime = SelRateVal;
+        };
+        
+        function StrGetBytes(str){
+          var r = 0;
+          for (var i = 0; i < str.length; i++) {
+            var c = str.charCodeAt(i);
+            if (c >= 0x0 && c <= 0x7E){
+              r += 1;
+            }else if(c >= 0xC2 && c <= 0xD1){
+              r += 2;
+            }else if(c >= 0xE2 && c <= 0xEF){
+              r += 3;
+            }
+          }
+          return r;
+        };
+
+        window.onload = function(){ setTimeout('init()', 1000); };
+        
+        function dummy_z(){};
+        
+        function event_msg(id, val){
+          var SelTarget = document.getElementById(id);
+          SelTarget.innerHTML = val;
+        };
+        
+        function get_pic(){
+          var SelFileVal = document.Fsel.File_sel.value;
+          var f_path = 'http://' + MyLocal_IP + '/picture/' + SelFileVal;  
+          event_msg('file_RX_msg', 'Now Loading');
+          DoSend2(100,'Image');
+          WS_close();
+          setTimeout('dummy_z()',50);
+          var pic = document.getElementById('pic_place');
+          pic.src = f_path;
+          pic.width = 300;
+          pic.onload;
+          var images = document.getElementsByTagName('img');
+          for (var i = 0; i < images.length; i++) {
+              images[i].onload = function() {
+                event_msg('file_RX_msg', 'Load Complete!');
+              }
+          };
+        };
+        
+        function send_pic(id){
+          var File_ELM = document.getElementById(id);
+
+          if(!(File_ELM.value)) return;
+
+          var FileList = File_ELM.files;
+          if(!FileList) return;
+
+          var file = FileList[0];
+          if(!file) return;
+
+          var file_reader = new FileReader();
+
+          if(file.type.indexOf('text') == 0){
+            event_msg('file_TX_msg', 'Not Binary File!  This is Text File.');
+          }else{
+            event_msg('file_TX_msg', 'Binary File. OK!');
+            file_reader.onload = function(e){
+              var ary_u8 = new Uint8Array(file_reader.result);
+              websocket.send(ary_u8.buffer);
+              event_msg('file_TX_msg', 'Binary File Send Complete!');
+            };
+            file_reader.readAsArrayBuffer(file);
+          }
+        };
+
+      </script>
+    </head>

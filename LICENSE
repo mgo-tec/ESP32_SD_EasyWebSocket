@@ -1,8 +1,32 @@
                   GNU LESSER GENERAL PUBLIC LICENSE
                        Version 2.1, February 1999
 
- Copyright (C) 1991, 1999 Free Software Foundation, Inc.
- 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ Copyright (c) 2016 Mgo-tec
+ This library improvement collaborator is Mr.Visyeii.
+ Part of WiFiServer.h(for ESP8266) library modified.
+ 
+WiFi.h - Included WiFi library for esp32
+
+ESP8266WiFi.h - esp8266 Wifi support.
+WiFiServer.h - esp8266 Wifi support.
+Based on WiFi.h from Arduino WiFi shield library.
+Copyright (c) 2011-2014 Arduino.  All right reserved.
+Modified by Ivan Grokhotkov, December 2014
+
+@file sha1.h
+@date 20.05.2015
+@author Steve Reid <steve@edmweb.com>
+SHA-1 in C
+By Steve Reid <steve@edmweb.com>
+from: http://www.virtualbox.org/svn/vbox/trunk/src/recompiler/tests/sha1.c
+100% Public Domain
+
+SD.h - Included SD card library for esp32
+Copyright 2015-2016 Espressif Systems (Shanghai) PTE LTD
+Licensed under the Apache License, Version 2.0 (the "License");
+
+Reference Apache License --> http://www.apache.org/licenses/LICENSE-2.0
+ 
  Everyone is permitted to copy and distribute verbatim copies
  of this license document, but changing it is not allowed.
 
