@@ -15,7 +15,7 @@ Added EWS_ESP32_SendRate function to adjust transfer rate of data sent from ESP3
 Other unnecessary functions were deleted.  
   
   
-#【更新履歴】(Japanese)
+【更新履歴】(Japanese)
 (1.50)  
 SD_EasyWebSocket BETA 1.47(ESP8266用)を基に ESP32用に移植。  
 Steve Reidさん作のsha1ソースファイル(License:Public Domain)を使用させていただきました。
