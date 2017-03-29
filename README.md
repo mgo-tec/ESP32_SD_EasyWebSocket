@@ -7,9 +7,9 @@ This use SD card (SPI).
 My Blog: https://www.mgo-tec.com
 # Change log:
 (1.50)  
-Changed for ESP32 based on SD_EasyWebSocket BETA 1.47(for ESP8266).
-I used the sha1 source file (License: Public Domain) made by Steve Reid.
-Thank you Steve Reid.
+Changed for ESP32 based on SD_EasyWebSocket BETA 1.47(for ESP8266).  
+I used the sha1 source file (License: Public Domain) made by Steve Reid.  
+Thank you Steve Reid.  
 Add String res_html variable of WS_Dev_AutoLIP_HandShake function to seven.  
 Added EWS_ESP32_SendRate function to adjust transfer rate of data sent from ESP32.  
 Other unnecessary functions were deleted.  
@@ -18,9 +18,9 @@ Other unnecessary functions were deleted.
 【更新履歴】(Japanese)
 (1.50)  
 SD_EasyWebSocket BETA 1.47(ESP8266用)を基に ESP32用に移植。  
-Steve Reidさん作のsha1ソースファイル(License:Public Domain)を使用させていただきました。
-Steve Reidさん ありがとうございます。
-WS_Dev_AutoLIP_HandShake関数のString res_html変数を７つにしました。
+Steve Reidさん作のsha1ソースファイル(License:Public Domain)を使用させていただきました。  
+Steve Reidさん ありがとうございます。  
+WS_Dev_AutoLIP_HandShake関数のString res_html変数を７つにしました。  
 ESP32から送信するデータの転送レートを調節するための、EWS_ESP32_SendRate関数を追加しました。 
 その他、不要な関数を削除しました。  
 
@@ -65,4 +65,4 @@ Reference Apache License --> http://www.apache.org/licenses/LICENSE-2.0
   
 # My Blog: 
 Other usage is Japanese, please visit my blog.  
-https://www.mgo-tec.com
+https://www.mgo-tec.com  
