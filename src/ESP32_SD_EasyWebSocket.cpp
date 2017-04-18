@@ -1,6 +1,6 @@
 /*
-  ESP32_SD_EasyWebSocket.cpp - WebSocket for ESP-WROOM-32 ( ESP32 )
-  Beta version 1.50
+  ESP32_SD_EasyWebSocket.cpp - WebSocket for ESP-WROOM-32 ( ESP32 & SD microSDHC card use)
+  Beta version 1.51
 
 Copyright (c) 2017 Mgo-tec
 This library improvement collaborator is Mr.Visyeii.
@@ -27,12 +27,15 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 Reference LGPL-2.1 license statement --> https://opensource.org/licenses/LGPL-2.1   
 
 WiFi.h - Included WiFi library for esp32
-
-ESP8266WiFi.h - esp8266 Wifi support.
-WiFiServer.h - esp8266 Wifi support.
 Based on WiFi.h from Arduino WiFi shield library.
 Copyright (c) 2011-2014 Arduino.  All right reserved.
 Modified by Ivan Grokhotkov, December 2014
+Licensed under the LGPL-2.1
+
+WiFiClientSecure.h
+Copyright (c) 2011 Adrian McEwen.  All right reserved.
+Additions Copyright (C) 2017 Evandro Luis Copercini.
+Licensed under the LGPL-2.1
 
 @file sha1.h
 @date 20.05.2015
@@ -49,7 +52,6 @@ Licensed under the Apache License, Version 2.0 (the "License");
 Reference Apache License --> http://www.apache.org/licenses/LICENSE-2.0
 */
 
-#include <Arduino.h>
 #include "ESP32_SD_EasyWebSocket.h"
 
 extern "C" {
@@ -177,134 +179,41 @@ void SD_EasyWebSocket::handleClient()
     }
   }
 }
-//********WebSocket Hand Shake ****************
-void SD_EasyWebSocket::EWS_HandShake(const char* HTML_file, String res_html1, String res_html2, String res_html3, String res_html4, String res_html5, String res_html6, String res_html7)
-{
+//*********handleClient***************
+bool SD_EasyWebSocket::Get_Http_Req_Status(){
   String req;
   String hash_req_key;
-  uint32_t LoopTime = millis();
+  _GetLoopTime = millis();
   
   if(!_WS_on){
     handleClient();
+  }else{
+    return false;
   }
-  
-  if(__client){
-    LoopTime = millis();
-    while(!_WS_on){
 
-      if(millis()-LoopTime > 5000L){
-        _WS_on = false;
-        _Ini_html_on = false;
-        _Upgrade_first_on = false;
-        Serial.println(F("-----------------------Received TimeOut 1"));
-        if(__client){
-          delay(10);
-          __client.stop();
-          Serial.println(F("---------------------TimeOut Client Stop 1"));
-        }
-        Serial.println(F("-----------------------The Handshake returns to the beginning 1"));
+  if(__client){
+    _GetLoopTime = millis();
+    while(!_WS_on){
+      if(millis()-_GetLoopTime > 5000L){
+        SD_EasyWebSocket::HandShake_timeout(1);
         break;
       }
 
       delay(1);
-      switch((int)_Ini_html_on){
+      switch(_Ini_html_on){
         case 0:
-          LoopTime = millis();
+          _GetLoopTime = millis();
           while(__client){
-            if(millis()-LoopTime > 5000L){
-              _WS_on = false;
-              _Ini_html_on = false;
-              _Upgrade_first_on = false;
-              Serial.println(F("-----------------------Received TimeOut 2"));
-              if(__client){
-                delay(10);
-                __client.stop();
-                Serial.println(F("---------------------TimeOut Client Stop 2"));
-              }
-              Serial.println(F("-----------------------The Handshake returns to the beginning 2"));
-
+            if(millis()-_GetLoopTime > 5000L){
+              SD_EasyWebSocket::HandShake_timeout(2);
               break;
             }
             if(__client.available()){
               req = __client.readStringUntil('\n');
               if(req.indexOf("GET / HTTP") != -1){
-                Serial.println(F("-------------------HTTP Request from Browser"));
+                Serial.println(F("-------HTTP Request from Browser"));
                 Serial.println(req);
-
-                while(req.indexOf("\r") != 0){
-                  req = __client.readStringUntil('\n');
-                  if(req.indexOf("Upgrade: websocket") != -1){
-                    Serial.println(F("-------------------Connection: Upgrade HTTP Request"));
-                    Serial.println(req);
-                    _Ini_html_on = true;
-                    _Upgrade_first_on = true;
-                    SD_EasyWebSocket::EWS_HTTP_Responce();
-                    _PingLastTime = millis();
-                    _PongLastTime = millis();
-                    break;
-                  }
-
-                  if(req.indexOf("Android") != -1){
-                    _Android_or_iPad = 'A';
-                  }else if(req.indexOf("iPad") != -1){
-                    _Android_or_iPad = 'i';
-                  }else if(req.indexOf("iPhone") != -1){
-                    _Android_or_iPad = 'P';
-                  }
-                  Serial.println(req);
-									yield();
-                }
-                req = "";
-                
-                if(_Upgrade_first_on == true)break;
-                
-                Serial.println(F("-------------------HTTP Response Send to Browser"));
-                delay(10);
-
-                __client.print(F("HTTP/1.1 200 OK\r\n"));
-                __client.print(F("Content-Type:text/html\r\n"));
-                __client.print(F("Connection:close\r\n\r\n"));
-
-                SD.begin();
-                File HTML_F = SD.open(HTML_file, FILE_READ);
-                SD_EasyWebSocket::SD_Client_Write(HTML_F, HTML_file);
-                HTML_F.close();
-
-                __client.print(res_html1);
-                __client.print(res_html2);
-                __client.print(res_html3);
-                __client.print(res_html4);
-                __client.print(res_html5);
-                __client.print(res_html6);
-                __client.print(res_html7);
-
-                  
-                
-                Serial.println(F("---------------------HTTP response complete"));
-
-                res_html1 = "";
-                res_html2 = "";
-                res_html3 = "";
-                res_html4 = "";
-                res_html5 = "";
-                res_html6 = "";
-                res_html7 = "";
-
-                __client.flush();
-                delay(5);
-
-                __client.stop();
-
-                delay(5);
-
-                Serial.println(F("\n--------------------GET HTTP client stop"));
-                req = "";
-                _Ini_html_on = true;
-                LoopTime = millis();
-
-                if(_Android_or_iPad == 'i'){
-                  break;
-                }
+                return true;
               }else if(req.indexOf("GET /favicon") != -1){
                 SD_EasyWebSocket::Favicon_Response(req, 0, 1, 2);
                 break;
@@ -314,395 +223,248 @@ void SD_EasyWebSocket::EWS_HandShake(const char* HTML_file, String res_html1, St
           }
           break;
         case 1:
-          switch((int)_WS_on){
+          switch(_WS_on){
             case 0:
               SD_EasyWebSocket::EWS_HTTP_Responce();
               _PingLastTime = millis();
               _PongLastTime = millis();
               break;
             case 1:
-              Serial.println(F("-----------------WebSocket HandShake Complete!"));
-              LoopTime = millis();
+              Serial.println(F("-------WebSocket HandShake Complete!"));
+              _GetLoopTime = millis();
               break;
           }
           break;
       }
-			yield();
+	  	yield();
     }
+  }
+  return false;
+}
+//****************************************
+bool SD_EasyWebSocket::http_resp(){
+  String req = "";
+  while(req.indexOf("\r") != 0){
+    req = __client.readStringUntil('\n');
+    if(req.indexOf("Upgrade: websocket") != -1){
+      Serial.println(F("-------Connection: Upgrade HTTP Request"));
+      Serial.println(req);
+      _Ini_html_on = 1;
+      _Upgrade_first_on = true;
+      SD_EasyWebSocket::EWS_HTTP_Responce();
+      _PingLastTime = millis();
+      _PongLastTime = millis();
+      break;
+    }
+
+    if(req.indexOf("Android") != -1){
+      _Android_or_iPad = 'A';
+    }else if(req.indexOf("iPad") != -1){
+      _Android_or_iPad = 'i';
+    }else if(req.indexOf("iPhone") != -1){
+      _Android_or_iPad = 'P';
+    }
+    Serial.println(req);
+    yield();
+  }
+  req = "";
+
+  if(_Upgrade_first_on == true) return true;
+
+  Serial.println(F("-------HTTP Response Send to Browser"));
+  delay(10);
+
+  __client.print(F("HTTP/1.1 200 OK\r\n"));
+  __client.print(F("Content-Type:text/html\r\n"));
+  __client.print(F("Connection:close\r\n\r\n"));
+  
+  return false;
+}
+//********hand shake time out *****************
+void SD_EasyWebSocket::HandShake_timeout(uint8_t Num){
+  _WS_on = 0;
+  _Ini_html_on = 0;
+  _Upgrade_first_on = false;
+  Serial.print(F("-------Received TimeOut "));
+  Serial.println(Num);
+  if(__client){
+    delay(10);
+    __client.stop();
+    Serial.print(F("-------TimeOut Client Stop "));
+    Serial.println(Num);
+  }
+  Serial.print(F("-------The Handshake returns to the beginning "));
+  Serial.println(Num);
+}
+//********WebSocket Hand Shake ****************
+void SD_EasyWebSocket::EWS_HandShake_main(uint8_t sel, uint8_t cs_SD, const char* head_file1, const char* head_file2, const char* html_file1, const char* html_file2, IPAddress res_LIP, String res_html1, String res_html2, String res_html3, String res_html4, String res_html5, String res_html6, String res_html7){
+  String req;
+  String hash_req_key;
+  _GetLoopTime = millis();
+  
+  while(__client){
+    
+    if( SD_EasyWebSocket::http_resp() ) break;
+
+    //SD.begin(cs_SD, SPI, 40000000, "/sd");
+    SPI.setFrequency(40000000);
+    SPI.setDataMode(SPI_MODE0);
+      
+    //size_t totalSizeH1 = HTML_head_F1.size();
+    //size_t totalSizeH2 = HTML_head_F2.size();
+    //size_t totalSize1 = HTML_1.size();
+    //size_t totalSize2 = HTML_2.size();
+
+    File HTML_head_F1, HTML_head_F2, HTML_1, HTML_2;
+
+    HTML_head_F1 = SD_EasyWebSocket::SD_open(head_file1);
+    if(HTML_head_F1 == 0) return;
+
+    if(sel >= 2){
+      HTML_head_F2 = SD_EasyWebSocket::SD_open(head_file2);
+      if(HTML_head_F2 == 0) return;
+    }
+    if(sel >= 1 && sel <= 3){
+      HTML_1 = SD_EasyWebSocket::SD_open(html_file1);
+      if(HTML_1 == 0) return;
+      HTML_2 = SD_EasyWebSocket::SD_open(html_file2);
+      if(HTML_2 == 0) return;
+    }
+
+    SD_EasyWebSocket::SD_Client_Write( HTML_head_F1, head_file1 );
+
+    if(sel >= 2){
+      __client.print(res_LIP);
+      SD_EasyWebSocket::SD_Client_Write( HTML_head_F2, head_file2 );
+    }
+    if(sel >= 1 && sel <= 3){
+      SD_EasyWebSocket::SD_Client_Write( HTML_1, html_file1 );
+    }
+
+    __client.print(res_html1);
+    __client.print(res_html2);
+    __client.print(res_html3);
+    if(sel == 0 || sel >= 3){
+      __client.print(res_html4);
+      __client.print(res_html5);
+      __client.print(res_html6);
+      __client.print(res_html7);
+    }
+    if(sel >= 1 && sel <= 3){
+      SD_EasyWebSocket::SD_Client_Write( HTML_2, html_file2 );
+      HTML_1.close();
+      HTML_2.close();
+    }
+    if(sel >= 2){
+      HTML_head_F2.close();
+    }
+
+    HTML_head_F1.close();
+
+    res_html1 = "";
+    res_html2 = "";
+    res_html3 = "";
+    res_html4 = "";
+    res_html5 = "";
+    res_html6 = "";
+    res_html7 = "";
+
+    Serial.println(F("---------------------HTTP response complete"));
+
+    __client.flush();
+    delay(10);
+
+    __client.stop();
+
+    delay(10);
+
+    Serial.println(F("\n-------GET HTTP client stop"));
+    req = "";
+    _Ini_html_on = 1;
+    _GetLoopTime = millis();
+
+    if(_Android_or_iPad == 'i'){
+      break;
+    }
+    break;
+  }
+}
+//********Client write from SD*********************
+void SD_EasyWebSocket::SD_Client_Write(File SDfile, const char* file_name){
+  if (SDfile == 0) {
+    Serial.printf("%s File not found\n",file_name);
+    return;
+  }else{
+    Serial.printf("%s File found. OK!\n",file_name);
+    
+    //size_t totalSize = SDfile.size();
+    char c = 0x20;
+    char c_print_buff[256];
+    uint16_t index_count = 0;
+if(__client){    
+    while(c!='\0'){
+      c= SDfile.read();
+      c_print_buff[index_count] = c;
+      if(c>0xDD) break;
+      index_count++;
+      if (index_count == 256){
+        __client.write((const char*)c_print_buff, 256);
+        Serial.print('.');
+        index_count = 0;
+      }
+      yield();
+    }
+}
+
+    if (index_count > 0){
+        __client.write((const char*)c_print_buff, index_count);
+        index_count = 0;
+    }
+    Serial.println();
+  }
+}
+//********Hand Shake Main *********************
+File SD_EasyWebSocket::SD_open(const char *filename){
+  File f = SD.open(filename, FILE_READ);
+  if (f == 0) {
+    Serial.printf("%s File not found. Cannot opened.\n", filename);
+    __client.print(F("ERROR!!<br>"));
+    __client.print(filename);
+    __client.print(F(" file has not been uploaded to the flash in SD card<br>"));
+  }else{
+    Serial.printf("%s File Open. OK!\n", filename);
+  }
+  return f;
+}
+
+//********WebSocket Hand Shake ****************
+void SD_EasyWebSocket::EWS_HandShake(const char* HTML_file, String res_html1, String res_html2, String res_html3, String res_html4, String res_html5, String res_html6, String res_html7)
+{
+  bool req_status = SD_EasyWebSocket::Get_Http_Req_Status();
+  
+  if(req_status == true){
+    SD_EasyWebSocket::EWS_HandShake_main(0, 5, HTML_file, "", "", "", IPAddress(0,0,0,0), res_html1, res_html2, res_html3, res_html4, res_html5, res_html6, res_html7);
   }
 }
 
 //********WebSocket Hand Shake (for devided HTML files)****************
 void SD_EasyWebSocket::EWS_Dev_HandShake(const char* HTML_head_file, const char* HTML_file1, String res_html1, String res_html2, String res_html3, const char* HTML_file2)
 {
-  String req;
-  String hash_req_key;
-  uint32_t LoopTime = millis();
+  bool req_status = SD_EasyWebSocket::Get_Http_Req_Status();
   
-  if(!_WS_on){
-    handleClient();
-  }
-  
-  if(__client){
-    LoopTime = millis();
-    while(!_WS_on){
-
-      if(millis()-LoopTime > 5000L){
-        _WS_on = false;
-        _Ini_html_on = false;
-        _Upgrade_first_on = false;
-        Serial.println(F("-----------------------Received TimeOut 1"));
-        if(__client){
-          delay(10);
-          __client.stop();
-          Serial.println(F("---------------------TimeOut Client Stop 1"));
-        }
-        Serial.println(F("-----------------------The Handshake returns to the beginning 1"));
-        break;
-      }
-
-      delay(1);
-      switch((int)_Ini_html_on){
-        case 0:
-          LoopTime = millis();
-          while(__client){
-            if(millis()-LoopTime > 5000L){
-              _WS_on = false;
-              _Ini_html_on = false;
-              _Upgrade_first_on = false;
-              Serial.println(F("-----------------------Received TimeOut 2"));
-              if(__client){
-                delay(10);
-                __client.stop();
-                Serial.println(F("---------------------TimeOut Client Stop 2"));
-              }
-              Serial.println(F("-----------------------The Handshake returns to the beginning 2"));
-
-              break;
-            }
-            if(__client.available()){
-              req = __client.readStringUntil('\n');
-              if(req.indexOf("GET / HTTP") != -1){
-                Serial.println(F("-------------------HTTP Request from Browser"));
-                Serial.println(req);
-
-                while(req.indexOf("\r") != 0){
-                  req = __client.readStringUntil('\n');
-                  if(req.indexOf("Upgrade: websocket") != -1){
-                    Serial.println(F("-------------------Connection: Upgrade HTTP Request"));
-                    Serial.println(req);
-                    _Ini_html_on = true;
-                    _Upgrade_first_on = true;
-                    SD_EasyWebSocket::EWS_HTTP_Responce();
-                    _PingLastTime = millis();
-                    _PongLastTime = millis();
-                    break;
-                  }
-
-                  if(req.indexOf("Android") != -1){
-                    _Android_or_iPad = 'A';
-                  }else if(req.indexOf("iPad") != -1){
-                    _Android_or_iPad = 'i';
-                  }else if(req.indexOf("iPhone") != -1){
-                    _Android_or_iPad = 'P';
-                  }
-                  Serial.println(req);
-									yield();
-                }
-                req = "";
-                
-                if(_Upgrade_first_on == true)break;
-                
-                Serial.println(F("-------------------HTTP Response Send to Browser"));
-                delay(10);
-
-                __client.print(F("HTTP/1.1 200 OK\r\n"));
-                __client.print(F("Content-Type:text/html\r\n"));
-                __client.print(F("Connection:close\r\n\r\n"));
-
-                SD.begin();
-                File HTML_head_F = SD.open(HTML_head_file, FILE_READ);
-                if (HTML_head_F == 0) {
-                  Serial.printf("%s File not found\n",HTML_head_file);
-                  __client.print(F("ERROR!!<br>"));
-                  __client.print(F("HTML_head file has not been uploaded to the flash in SD card"));
-                  return;
-                }else{
-                  Serial.printf("%s File found. OK!\n",HTML_head_file);
-                }
-                File HTML_1 = SD.open(HTML_file1, FILE_READ);
-                if (HTML_1 == 0) {
-                  Serial.printf("%s File not found\n",HTML_file1);
-                  return;
-                }else{
-                  Serial.printf("%s File found. OK!\n",HTML_file1);
-                }
-                File HTML_2 = SD.open(HTML_file2, FILE_READ);
-                if (HTML_2 == 0) {
-                  Serial.printf("%s File not found\n",HTML_file2);
-                  return;
-                }else{
-                  Serial.printf("%s File found. OK!\n",HTML_file2);
-                }
-        
-                //size_t totalSizeH = HTML_head_F.size();
-                //size_t totalSize1 = HTML_1.size();
-                //size_t totalSize2 = HTML_2.size();
-
-                SD_EasyWebSocket::SD_Client_Write(HTML_head_F, HTML_head_file);
-                SD_EasyWebSocket::SD_Client_Write(HTML_1, HTML_file1);
-                
-                __client.print(res_html1);
-                __client.print(res_html2);
-                __client.print(res_html3);
-                
-                SD_EasyWebSocket::SD_Client_Write(HTML_2, HTML_file2);
-                
-                HTML_head_F.close();
-                HTML_1.close();
-                HTML_2.close();
-
-                Serial.println(F("---------------------HTTP response complete"));
-
-                res_html1 = "";
-                res_html2 = "";
-                res_html3 = "";
-
-                __client.flush();
-                delay(5);
-
-                __client.stop();
-
-                delay(5);
-
-                Serial.println(F("\n--------------------GET HTTP client stop"));
-                req = "";
-                _Ini_html_on = true;
-                LoopTime = millis();
-
-                if(_Android_or_iPad == 'i'){
-                  break;
-                }
-              }else if(req.indexOf("GET /favicon") != -1){
-                SD_EasyWebSocket::Favicon_Response(req, 0, 1, 2);
-                break;
-              }
-            }
-						yield();
-          }
-          break;
-        case 1:
-          switch((int)_WS_on){
-            case 0:
-              SD_EasyWebSocket::EWS_HTTP_Responce();
-              _PingLastTime = millis();
-              _PongLastTime = millis();
-              break;
-            case 1:
-              Serial.println(F("-----------------WebSocket HandShake Complete!"));
-              LoopTime = millis();
-              break;
-          }
-          break;
-      }
-			yield();
-    }
+  if(req_status == true){
+    SD_EasyWebSocket::EWS_HandShake_main(1, 5, HTML_head_file, "", HTML_file1, HTML_file2, IPAddress(0,0,0,0), res_html1, res_html2, res_html3, "", "", "", "");
   }
 }
 //********WebSocket Hand Shake (for devided HTML header files & Auto Local IP address)****************
 void SD_EasyWebSocket::EWS_Dev_AutoLIP_HandShake(const char* HTML_head_file1, IPAddress res_LIP, const char* HTML_head_file2, const char* HTML_file1, String res_html1, String res_html2, String res_html3, String res_html4, String res_html5, String res_html6, String res_html7, const char* HTML_file2)
 {
-  String req;
-  String hash_req_key;
-  uint32_t LoopTime = millis();
+  bool req_status = SD_EasyWebSocket::Get_Http_Req_Status();
   
-  if(!_WS_on){
-    handleClient();
-  }
-  
-  if(__client){
-    LoopTime = millis();
-    while(!_WS_on){
-
-      if(millis()-LoopTime > 5000L){
-        _WS_on = false;
-        _Ini_html_on = false;
-        _Upgrade_first_on = false;
-        Serial.println(F("-----------------------Received TimeOut 1"));
-        if(__client){
-          delay(10);
-          __client.stop();
-          Serial.println(F("---------------------TimeOut Client Stop 1"));
-        }
-        Serial.println(F("-----------------------The Handshake returns to the beginning 1"));
-        break;
-      }
-
-      delay(1);
-      switch((int)_Ini_html_on){
-        case 0:
-          LoopTime = millis();
-          while(__client){
-            if(millis()-LoopTime > 5000L){
-              _WS_on = false;
-              _Ini_html_on = false;
-              _Upgrade_first_on = false;
-              Serial.println(F("-----------------------Received TimeOut 2"));
-              if(__client){
-                delay(10);
-                __client.stop();
-                Serial.println(F("---------------------TimeOut Client Stop 2"));
-              }
-              Serial.println(F("-----------------------The Handshake returns to the beginning 2"));
-
-              break;
-            }
-            if(__client.available()){
-              req = __client.readStringUntil('\n');
-              if(req.indexOf("GET / HTTP") != -1){
-                Serial.println(F("-------------------HTTP Request from Browser"));
-                Serial.println(req);
-
-                while(req.indexOf("\r") != 0){
-                  req = __client.readStringUntil('\n');
-                  if(req.indexOf("Upgrade: websocket") != -1){
-                    Serial.println(F("-------------------Connection: Upgrade HTTP Request"));
-                    Serial.println(req);
-                    _Ini_html_on = true;
-                    _Upgrade_first_on = true;
-                    SD_EasyWebSocket::EWS_HTTP_Responce();
-                    _PingLastTime = millis();
-                    _PongLastTime = millis();
-                    break;
-                  }
-
-                  if(req.indexOf("Android") != -1){
-                    _Android_or_iPad = 'A';
-                  }else if(req.indexOf("iPad") != -1){
-                    _Android_or_iPad = 'i';
-                  }else if(req.indexOf("iPhone") != -1){
-                    _Android_or_iPad = 'P';
-                  }
-                  Serial.println(req);
-									yield();
-                }
-                req = "";
-                
-                if(_Upgrade_first_on == true)break;
-                
-                Serial.println(F("-------------------HTTP Response Send to Browser"));
-                delay(10);
-
-                __client.print(F("HTTP/1.1 200 OK\r\n"));
-                __client.print(F("Content-Type:text/html\r\n"));
-                __client.print(F("Connection:close\r\n\r\n"));
-
-                SD.begin();
-                File HTML_head_F1 = SD.open(HTML_head_file1, FILE_READ);
-                if (HTML_head_F1 == 0) {
-                  Serial.printf("%s File not found\n",HTML_head_file1);
-                  __client.print(F("ERROR!!<br>"));
-                  __client.print(F("HTML_head file has not been uploaded to the flash in SD card"));
-                  return;
-                }else{
-                  Serial.printf("%s File found. OK!\n",HTML_head_file1);
-                }
-								
-								File HTML_head_F2 = SD.open(HTML_head_file2, FILE_READ);
-                if (HTML_head_F2 == 0) {
-                  Serial.printf("%s File not found\n",HTML_head_file2);
-                  __client.print(F("ERROR!!<br>"));
-                  __client.print(F("HTML_head file has not been uploaded to the flash in SD card"));
-                  return;
-                }else{
-                  Serial.printf("%s File found. OK!\n",HTML_head_file2);
-                }
-								
-                File HTML_1 = SD.open(HTML_file1, FILE_READ);
-                if (HTML_1 == 0) {
-                  Serial.printf("%s File not found\n",HTML_file1);
-                  return;
-                }else{
-                  Serial.printf("%s File found. OK!\n",HTML_file1);
-                }
-								
-                File HTML_2 = SD.open(HTML_file2, FILE_READ);
-                if (HTML_2 == 0) {
-                  Serial.printf("%s File not found\n",HTML_file2);
-                  return;
-                }else{
-                  Serial.printf("%s File found. OK!\n",HTML_file2);
-                }
-        
-                //size_t totalSizeH1 = HTML_head_F1.size();
-								//size_t totalSizeH2 = HTML_head_F2.size();
-                //size_t totalSize1 = HTML_1.size();
-                //size_t totalSize2 = HTML_2.size();
-
-                SD_EasyWebSocket::SD_Client_Write(HTML_head_F1, HTML_head_file1);
-								__client.print(res_LIP);
-                SD_EasyWebSocket::SD_Client_Write(HTML_head_F2, HTML_head_file2);
-                SD_EasyWebSocket::SD_Client_Write(HTML_1, HTML_file1);
-                
-                __client.print(res_html1);
-                __client.print(res_html2);
-                __client.print(res_html3);
-                __client.print(res_html4);
-                __client.print(res_html5);
-                __client.print(res_html6);
-                __client.print(res_html7);
-                
-                SD_EasyWebSocket::SD_Client_Write(HTML_2, HTML_file2);
-                
-                HTML_head_F1.close();
-								HTML_head_F2.close();
-                HTML_1.close();
-                HTML_2.close();
-
-                Serial.println(F("---------------------HTTP response complete"));
-
-                __client.flush();
-                delay(5);
-
-                __client.stop();
-
-                delay(5);
-
-                Serial.println(F("\n--------------------GET HTTP client stop"));
-                req = "";
-                _Ini_html_on = true;
-                LoopTime = millis();
-
-                if(_Android_or_iPad == 'i'){
-                  break;
-                }
-              }else if(req.indexOf("GET /favicon") != -1){
-                SD_EasyWebSocket::Favicon_Response(req, 0, 1, 2);
-                break;
-              }
-            }
-						yield();
-          }
-          break;
-        case 1:
-          switch((int)_WS_on){
-            case 0:
-              SD_EasyWebSocket::EWS_HTTP_Responce();
-              _PingLastTime = millis();
-              _PongLastTime = millis();
-              break;
-            case 1:
-              Serial.println(F("-----------------WebSocket HandShake Complete!"));
-              LoopTime = millis();
-              break;
-          }
-          break;
-      }
-			yield();
-    }
+  if(req_status == true){
+    SD_EasyWebSocket::EWS_HandShake_main(3, 5, HTML_head_file1, HTML_head_file2, HTML_file1, HTML_file2, res_LIP, res_html1, res_html2, res_html3, res_html4, res_html5, res_html6, res_html7);
   }
 }
-
 //************HTTP Response**************************
 void SD_EasyWebSocket::EWS_HTTP_Responce()
 {  
@@ -716,8 +478,8 @@ void SD_EasyWebSocket::EWS_HTTP_Responce()
 
   while(__client){
     if(millis()-LoopTime > 5000L){
-      _WS_on = false;
-      _Ini_html_on = false;
+      _WS_on = 0;
+      _Ini_html_on = 0;
       _Upgrade_first_on = false;
       Serial.println(F("-----------------------Received TimeOut 3"));
       if(__client){
@@ -774,7 +536,7 @@ void SD_EasyWebSocket::EWS_HTTP_Responce()
         __client.print(str);
         str = "";
   
-        _WS_on = true;
+        _WS_on = 1;
         Serial.println(F("-------------------WebSocket Response Complete!"));
         break;
   
@@ -827,7 +589,7 @@ void SD_EasyWebSocket::Hash_Key(String h_req_key, char* h_resp_key)
   Serial.print(F("SHA1:"));
 
   uint8_t hash[20];
-  sha1(merge_str, &hash[0]);
+  SD_EasyWebSocket::sha1(merge_str, &hash[0]);
 
   for( i = 0; i < 20; i++) {
     hash_six[j] = hash[i]>>2;
@@ -884,6 +646,11 @@ void SD_EasyWebSocket::Hash_Key(String h_req_key, char* h_resp_key)
   
 void SD_EasyWebSocket::EWS_ESP8266_Str_SEND(String str, String id)
 {
+  SD_EasyWebSocket::EWS_ESP32_Str_SEND(str, id);
+}
+
+void SD_EasyWebSocket::EWS_ESP32_Str_SEND(String str, String id)
+{
   str += '|' + id + '|';
   __client.write(B10000001);
   __client.write(str.length());
@@ -891,6 +658,11 @@ void SD_EasyWebSocket::EWS_ESP8266_Str_SEND(String str, String id)
 }
 
 String SD_EasyWebSocket::EWS_ESP8266CharReceive(uint16_t pTime)
+{
+  return SD_EasyWebSocket::EWS_ESP32CharReceive(pTime);
+}
+
+String SD_EasyWebSocket::EWS_ESP32CharReceive(uint16_t pTime)
 {
   uint8_t b=0;
   uint8_t data_len;
@@ -912,8 +684,8 @@ String SD_EasyWebSocket::EWS_ESP8266CharReceive(uint16_t pTime)
         __client.flush();
         Serial.println();
         Serial.println(F("-----------------Ping Non-Response Client.STOP"));
-        _WS_on = false;
-        _Ini_html_on = false;
+        _WS_on = 0;
+        _Ini_html_on = 0;
         _Upgrade_first_on = false;
         return str_close;
       }
@@ -993,8 +765,8 @@ String SD_EasyWebSocket::EWS_ESP8266CharReceive(uint16_t pTime)
       __client.flush();
       Serial.println();
       Serial.println(F("------------------Client.STOP"));
-      _WS_on = false;
-      _Ini_html_on = false;
+      _WS_on = 0;
+      _Ini_html_on = 0;
       _Upgrade_first_on = false;
       
       while(__client){
@@ -1018,7 +790,7 @@ String SD_EasyWebSocket::EWS_ESP8266CharReceive(uint16_t pTime)
   }
 }
 
-String SD_EasyWebSocket::EWS_ESP8266DataReceive_SD_write(uint16_t pTime, uint8_t sd_cs, char bin_file[14])
+String SD_EasyWebSocket::EWS_ESP32DataReceive_SD_write(uint16_t pTime, uint8_t sd_cs, char bin_file[14])
 {
   uint8_t b=0;
   uint8_t data_len;
@@ -1040,8 +812,8 @@ String SD_EasyWebSocket::EWS_ESP8266DataReceive_SD_write(uint16_t pTime, uint8_t
         __client.flush();
         Serial.println();
         Serial.println(F("-----------------Ping Non-Response Client.STOP"));
-        _WS_on = false;
-        _Ini_html_on = false;
+        _WS_on = 0;
+        _Ini_html_on = 0;
         _Upgrade_first_on = false;
         return str_close;
       }
@@ -1062,7 +834,7 @@ String SD_EasyWebSocket::EWS_ESP8266DataReceive_SD_write(uint16_t pTime, uint8_t
           break;
         case B10000010:
           Serial.println(F("WebSocket Binary Receive*********"));
-          SD_EasyWebSocket::EWS_ESP8266_Binary_Receive(sd_cs, bin_file);
+          SD_EasyWebSocket::EWS_ESP32_Binary_Receive(sd_cs, bin_file);
           _PingLastTime = millis();
           _PongLastTime = millis();
           return "_Binary";
@@ -1132,8 +904,8 @@ String SD_EasyWebSocket::EWS_ESP8266DataReceive_SD_write(uint16_t pTime, uint8_t
       __client.flush();
       Serial.println();
       Serial.println(F("------------------Client.STOP"));
-      _WS_on = false;
-      _Ini_html_on = false;
+      _WS_on = 0;
+      _Ini_html_on = 0;
       _Upgrade_first_on = false;
       
       while(__client){
@@ -1156,7 +928,7 @@ String SD_EasyWebSocket::EWS_ESP8266DataReceive_SD_write(uint16_t pTime, uint8_t
   return "";
 }
 //********************************************************
-void SD_EasyWebSocket::EWS_ESP8266_Binary_Receive(uint8_t sd_cs, char bin_file[14])
+void SD_EasyWebSocket::EWS_ESP32_Binary_Receive(uint8_t sd_cs, char bin_file[14])
 {
   uint8_t b=0;
   uint8_t data_len;
@@ -1548,7 +1320,7 @@ String SD_EasyWebSocket::EWS_Canvas_Slider_T(String slider_id, uint16_t width, u
 
   str += "    canvas2.addEventListener('touchmove', slider_" + slider_id + ", false);\r\n";
   str += "    canvas2.addEventListener('touchstart', slider_" + slider_id + ", false);\r\n";
-
+  
   str += "    function slider_" + slider_id + "(event3) {\r\n";
   str += "      event3.preventDefault();\r\n";
   str += "      event3.stopPropagation();\r\n";
@@ -1648,8 +1420,82 @@ String SD_EasyWebSocket::EWS_Web_Get(char* host, String target_ip, uint8_t char_
   __client.flush();
   Serial.println(F("--------------------Client Stop"));
  
-  _WS_on = false;
-  _Ini_html_on = false;
+  _WS_on = 0;
+  _Ini_html_on = 0;
+  _Upgrade_first_on = false;
+  
+  return ret_str;
+}
+
+String SD_EasyWebSocket::EWS_https_Web_Get(const char* host, String target_ip, char char_tag, String Final_tag, String Begin_tag, String End_tag, String Paragraph){
+  String str1;
+  String str2;
+  String str3;
+  String ret_str = "";
+
+  delay(10);
+  __client.stop();
+  delay(10);
+  __client.flush();
+  Serial.println(F("-------WebSocket Client Stop"));
+
+  WiFiClientSecure Sec_client;
+  const int httpsPort = 443;
+ 
+  if (Sec_client.connect(host, httpsPort)) {
+    Serial.print(host); Serial.print(F("-------------"));
+    Serial.println(F("connected"));
+    Serial.println(F("-------WEB HTTP GET Request"));
+
+    
+    Sec_client.print(String("GET ") + target_ip + " HTTP/1.1\r\n" +
+               "Host: " + host + "\r\n" +
+               "User-Agent: BuildFailureDetectorESP32\r\n" +
+               "Connection: close\r\n\r\n");
+
+    Serial.println(String("GET ") + target_ip + " HTTP/1.1\r\n" +
+               "Host: " + host + "\r\n" +
+               "User-Agent: BuildFailureDetectorESP32\r\n" +
+               "Connection: close\r\n\r\n");
+
+  }else {
+    // if you didn't get a connection to the server:
+    Serial.println("connection failed");
+  }
+  String dummy_str;
+  uint16_t from, to;
+  if(Sec_client){
+    Serial.println(F("-------WEB HTTP Response"));
+    while(Sec_client.connected()){
+      while (Sec_client.available()) {
+        if(dummy_str.indexOf(Final_tag) < 0){
+          dummy_str = Sec_client.readStringUntil(char_tag);
+          if(dummy_str.indexOf(Begin_tag) != -1){
+            from = dummy_str.indexOf(Begin_tag) + Begin_tag.length();
+            to = dummy_str.indexOf(End_tag);
+            ret_str += Paragraph;
+            ret_str += dummy_str.substring(from,to);
+            ret_str += "  ";
+          }
+          dummy_str = "";
+        }else{
+          break;
+        }
+				yield();
+      }
+	  	yield();
+    }
+  }
+  ret_str += "\0";
+
+  delay(10);
+  Sec_client.stop();
+  delay(10);
+  Sec_client.flush();
+  Serial.println(F("-------Client Stop"));
+
+  _WS_on = 0;
+  _Ini_html_on = 0;
   _Upgrade_first_on = false;
   
   return ret_str;
@@ -1739,8 +1585,8 @@ bool SD_EasyWebSocket::HTTP_SD_Pic_Send(const char* Serv, const char* dir)
         Serial.println();
         Serial.println(F("------------------Client.STOP"));
 
-        _WS_on = false;
-        _Ini_html_on = false;
+        _WS_on = 0;
+        _Ini_html_on = 0;
         _Upgrade_first_on = false;
       }
       
@@ -1779,8 +1625,8 @@ bool SD_EasyWebSocket::HTTP_SD_Pic_Send(const char* Serv, const char* dir)
             Serial.println(F("\n--------------------GET JPEG HTTP client stop"));
             req = "";
             file_path = "";
-            _WS_on = false;
-            _Ini_html_on = false;
+            _WS_on = 0;
+            _Ini_html_on = 0;
             _Upgrade_first_on = false;
             return true;
           }
@@ -1814,18 +1660,18 @@ void SD_EasyWebSocket::Favicon_Response(String str, uint8_t ws, uint8_t ini_htm,
   
   switch(ws){
     case 1:
-      _WS_on = true;
+      _WS_on = 1;
       break;
     case 2:
-      _WS_on = false;
+      _WS_on = 0;
       break;
   }
   switch(ini_htm){
     case 1:
-      _Ini_html_on = true;
+      _Ini_html_on = 1;
       break;
     case 2:
-      _Ini_html_on = false;
+      _Ini_html_on = 0;
       break;
   }
   switch(up_f){
@@ -1835,47 +1681,6 @@ void SD_EasyWebSocket::Favicon_Response(String str, uint8_t ws, uint8_t ini_htm,
     case 2:
       _Upgrade_first_on = false;
       break;
-  }
-}
-
-void SD_EasyWebSocket::SD_Client_Write(File SDfile, const char* file_name){
-  if (SDfile == 0) {
-    Serial.printf("%s File not found\n",file_name);
-    return;
-  }else{
-    Serial.printf("%s File found. OK!\n",file_name);
-  }
-
-  if(SDfile){
-    //size_t totalSize = SDfile.size();
-    char c = 0x20;
-    char c_print_buff[256];
-    uint16_t index_count = 0;
-    
-    while(c!='\0'){
-      c= SDfile.read();
-      c_print_buff[index_count] = c;
-      if(c>0xDD) break;
-      index_count++;
-      if (index_count == 256){
-        __client.write((const char*)c_print_buff, 256);
-        Serial.print('.');
-        index_count = 0;
-      }
-      yield();
-    }
-
-    if (index_count > 0){
-        __client.write((const char*)c_print_buff, index_count);
-        index_count = 0;
-    }
-    Serial.println();
-  }else{
-    Serial.println(F("ERROR.\r\n"));
-    Serial.println(F("HTML_head file has not been uploaded to the flash in SD card"));
-    __client.print(F("ERROR!!<br>"));
-    __client.print(F("HTML_head file has not been uploaded to the flash in SD card"));
-    while(1){yield();}
   }
 }
 
