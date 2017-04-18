@@ -22,7 +22,7 @@ EWS_ESP32_SendRate
 EWS_https_Web_Get  
 (Attention !: Consumes a lot of memory.)  
   
-- Fix -  
+-Fix -  
 Changed ESP8266 character function to ESP32.  
   
 (1.50)  
@@ -33,7 +33,7 @@ Add String res_html variable of WS_Dev_AutoLIP_HandShake function to seven.
 Added EWS_ESP32_SendRate function to adjust transfer rate of data sent from ESP32.  
   
   
-#【更新履歴】(Japanese)
+# 【更新履歴】(Japanese)
 (1.51)  
 WebSocket ハンドシェイク関数構造を大幅改良。  
 EWS_HandShake_main関数を追加し、それをローカル関数内に置くことによって、グローバル変数領域やSRAMを削減可能。  
