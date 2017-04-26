@@ -1,6 +1,6 @@
 /*
   ESP32_SD_EasyWebSocket.cpp - WebSocket for ESP-WROOM-32 ( ESP32 & SD microSDHC card use)
-  Beta version 1.51
+  Beta version 1.51.1
 
 Copyright (c) 2017 Mgo-tec
 This library improvement collaborator is Mr.Visyeii.
@@ -401,24 +401,25 @@ void SD_EasyWebSocket::SD_Client_Write(File SDfile, const char* file_name){
     char c = 0x20;
     char c_print_buff[256];
     uint16_t index_count = 0;
-if(__client){    
-    while(c!='\0'){
-      c= SDfile.read();
-      c_print_buff[index_count] = c;
-      if(c>0xDD) break;
-      index_count++;
-      if (index_count == 256){
-        __client.write((const char*)c_print_buff, 256);
-        Serial.print('.');
-        index_count = 0;
+    
+    if(__client){    
+      while(c!='\0'){
+        c= SDfile.read();
+        c_print_buff[index_count] = c;
+        if(c>0xEF) break;
+        index_count++;
+        if (index_count == 256){
+          __client.write((const char*)c_print_buff, 256);     
+          Serial.print('.');
+          index_count = 0;
+        }
+        yield();
       }
-      yield();
     }
-}
 
     if (index_count > 0){
-        __client.write((const char*)c_print_buff, index_count);
-        index_count = 0;
+      __client.write((const char*)c_print_buff, index_count);
+      index_count = 0;
     }
     Serial.println();
   }

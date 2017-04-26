@@ -1,4 +1,4 @@
-# ESP32_SD_EasyWebSocket BETA 1.51
+# ESP32_SD_EasyWebSocket BETA 1.51.1
 Simple library for WebSocket communication with ESP-WROOM-32(ESP32) and smartphone browser.  
 This requires the Arduino core for ESP32 library.  
 https://github.com/espressif/arduino-esp32  
@@ -6,6 +6,11 @@ This use SD card (SPI).
 
 My Blog: https://www.mgo-tec.com
 # Change log:
+(1.51.1)  
+When reading external HTML file of UTF-8 format, we have fixed the problem of not reading UTF-8 Japanese kanji.  
+Incidentally, please note that files saved in Shift_JIS format can not be used.  
+Be sure to use a text file saved in UTF-8 format.  
+  
 (1.51)  
 Significantly improved WebSocket handshake function structure.  
 By adding the EWS_HandShake_main function and putting it in the local function, global variable area and SRAM can be reduced.  
@@ -34,6 +39,11 @@ Added EWS_ESP32_SendRate function to adjust transfer rate of data sent from ESP3
   
   
 # 【更新履歴】(Japanese)
+(1.51.1)  
+UTF-8形式の外部HTMLファイルを読み込む時に、UTF-8日本語漢字を読み込まない不具合を修正しました。  
+因みに、Shift_JIS形式で保存されたファイルは使えませんのでご注意ください。  
+必ず UTF-8形式で保存したテキストファイルを使用してください。 
+  
 (1.51)  
 WebSocket ハンドシェイク関数構造を大幅改良。  
 EWS_HandShake_main関数を追加し、それをローカル関数内に置くことによって、グローバル変数領域やSRAMを削減可能。  
