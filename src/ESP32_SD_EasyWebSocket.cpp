@@ -1,6 +1,6 @@
 /*
   ESP32_SD_EasyWebSocket.cpp - WebSocket for ESP-WROOM-32 ( ESP32 & SD microSDHC card use)
-  Beta version 1.51.1
+  Beta version 1.51.2
 
 Copyright (c) 2017 Mgo-tec
 This library improvement collaborator is Mr.Visyeii.
@@ -111,7 +111,7 @@ void SD_EasyWebSocket::SoftAP_setup(const char* ssid, const char* password)
   delay(1000);
    
   IPAddress myIP = WiFi.softAPIP();
-  Serial.print(F("AP IP address: "));  Serial.println(myIP);
+  Serial.print(F("SoftAP IP address: "));  Serial.println(myIP);
   
   // Start the server
   _currentStatus = HC_NONE1;
@@ -119,7 +119,7 @@ void SD_EasyWebSocket::SoftAP_setup(const char* ssid, const char* password)
   Serial.println(F("Server started"));
 
   // Print the IP address
-  Serial.println(WiFi.localIP());
+  Serial.println(WiFi.softAPIP());
   delay(10);
   _Upgrade_first_on = false;
 }

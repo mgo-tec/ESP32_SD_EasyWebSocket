@@ -1,6 +1,6 @@
 /*
   ESP32_SD_EasyWebSocket.h - WebSocket for ESP-WROOM-32 ( ESP32 & SD microSDHC card use)
-  Beta version 1.51.1
+  Beta version 1.51.2
 
 Copyright (c) 2017 Mgo-tec
 This library improvement collaborator is Mr.Visyeii.
