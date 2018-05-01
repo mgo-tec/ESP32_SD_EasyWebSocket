@@ -37,3 +37,5 @@ EWS_TextBox_Send	KEYWORD2
 EWS_Web_Get	KEYWORD2
 HTTP_SD_Pic_Send	KEYWORD2
 Favicon_Response	KEYWORD2
+WebSocket_Status	KEYWORD2
+Color_Picker	KEYWORD2

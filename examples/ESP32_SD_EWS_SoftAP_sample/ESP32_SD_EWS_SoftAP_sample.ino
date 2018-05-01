@@ -1,6 +1,6 @@
 // ESP32 Soft AP mode Only
 
-#include <ESP32_SD_EasyWebSocket.h> //beta ver 1.51.2
+#include <ESP32_SD_EasyWebSocket.h> //beta ver 1.60
   
 const char *ssid = "xxxxxxxx"; //SoftAP mode 用に自由に書き換えてください。
 const char *password = "xxxxxxxx"; //SoftAP mode は８文字以上にすること。
@@ -35,21 +35,21 @@ void setup()
   pinMode(ledPin1, OUTPUT);
   pinMode(ledPin2, OUTPUT);
   pinMode(ledPin3, OUTPUT);
-      
+   
   ews.SoftAP_setup(ssid, password); //Soft AP mode
   delay(1000);
-    
+
   LIP = WiFi.softAPIP(); //ESP32のSoft AP mode IPアドレスを自動取得
-  
+
   Serial.println(); Serial.println("Initializing SD card...");
-  
+
   if (!SD.begin(cs_SD, SPI, 40000000, "/sd")) {
     Serial.println("Card failed, or not present");
     return;
   }
-  
+
   Serial.println("card initialized. OK!");
-  
+
   sigmaDeltaSetup(0, 312500);
   sigmaDeltaSetup(1, 312500);
   sigmaDeltaSetup(2, 312500);
@@ -59,13 +59,15 @@ void setup()
   sigmaDeltaWrite(0, 0); // LED OFF
   sigmaDeltaWrite(1, 0); // LED OFF
   sigmaDeltaWrite(2, 0); // LED OFF
-    
+
   ESP32_send_LastTime = millis();
 }
-  
+
 void loop() {
   websocket_handshake();
-    
+  
+  ret_str = ews.EWS_ESP32CharReceive(PingSendTime);
+
   if(ret_str != "_close"){
     if(millis()-ESP32_send_LastTime > ESP32_send_Rate){
       if(cnt > 3){
@@ -75,8 +77,7 @@ void loop() {
       cnt++;
       ESP32_send_LastTime = millis();
     }
-  
-    ret_str = ews.EWS_ESP32CharReceive(PingSendTime);
+
     if(ret_str != "\0"){
       Serial.println(ret_str);
       if(ret_str != "Ping"){
@@ -115,7 +116,6 @@ void loop() {
     ESP32_send_LastTime = millis();
     ret_str = "";
   }
-    yield(); //これ重要かも
 }
 //**************************************************************
 void LED_PWM(byte Led_gr, byte channel, int data_i)
@@ -155,7 +155,7 @@ void LED_PWM(byte Led_gr, byte channel, int data_i)
 //*********************************************
 void websocket_send(uint8_t count, String txt1){
   String str;
-   
+
   switch(cnt){
     case 0:
       str = txt1;
@@ -170,7 +170,7 @@ void websocket_send(uint8_t count, String txt1){
       str = "World!!";
       break;
   }
-    
+
   ews.EWS_ESP32_Str_SEND(str, "wroomTXT"); //ブラウザに文字列を送信
 }
 //************************* Websocket handshake **************************************
@@ -183,7 +183,7 @@ void websocket_handshake(){
     html_str1 += "<font size=3>\r\n";
     html_str1 += "ESP-WROOM-32(ESP32)\r\n";
     html_str1 += "<br>\r\n";
-    html_str1 += "SD_EasyWebSocket Beta1.51 Sample\r\n";
+    html_str1 += "SD_EasyWebSocket Beta1.60 Sample\r\n";
     html_str1 += "</font><br>\r\n";
     html_str1 += ews.EWS_BrowserSendRate();
     html_str1 += "<br>\r\n";
@@ -193,31 +193,31 @@ void websocket_handshake(){
     html_str1 += "<br>\r\n";
     html_str1 += ews.EWS_Status_Text2("WebSocket Status","#555", 20,"#FF00FF");
     html_str1 += "<br><br>\r\n";
-     
+
     html_str2 += ews.EWS_TextBox_Send("txt1", "Hello Easy WebSocket Beta1.51","送信");
     html_str2 += "<br><br>\r\n";
     html_str2 += "LED \r\n";
     html_str2 += ews.EWS_On_Momentary_Button("ALL", "ALL-ON", 80,25,15,"#000000","#AAAAAA");
     html_str2 += ews.EWS_On_Momentary_Button("OUT", "ALL-OFF", 80,25,15,"#FFFFFF","#555555");
     html_str2 += "<br>\r\n";
-      
+
     html_str3 += "<br>LED BLUE... Dim\r\n";
     html_str3 += ews.EWS_Canvas_Slider_T("BLUE",200,40,"#777777","#0000ff"); //CanvasスライダーはString文字列に２つまでしか入らない
     html_str3 += "<br>LED GREEN Dim\r\n";
     html_str3 += ews.EWS_Canvas_Slider_T("GREEN",200,40,"#777777","#00ff00"); //CanvasスライダーはString文字列に２つまでしか入らない
-      
+
     html_str4 += "<br>LED RED..... Dim\r\n";
     html_str4 += ews.EWS_Canvas_Slider_T("RED",200,40,"#777777","#ff0000"); //CanvasスライダーはString文字列に２つまでしか入らない
     html_str4 += "<br>LED RGB..... Dim\r\n";
     html_str4 += ews.EWS_Canvas_Slider_T("_RGB",200,40,"#777777","#ffff00");
-     
+
     html_str5 += "<br><br>\r\n";
     html_str5 += ews.EWS_WebSocket_Reconnection_Button2("WS-Reconnect", "grey", 200, 40, "black" , 17);
     html_str5 += "<br><br>\r\n";  
     html_str5 += ews.EWS_Close_Button2("WS CLOSE", "#bbb", 150, 40, "red", 17);
     html_str5 += ews.EWS_Window_ReLoad_Button2("ReLoad", "#bbb", 150, 40, "blue", 17);
     html_str5 += "</body></html>";
- 
+
     //WebSocket ハンドシェイク関数
     ews.EWS_HandShake_main(3, cs_SD, HTM_head_file1, HTM_head_file2, HTML_body_file, dummy_file, LIP, html_str1, html_str2, html_str3, html_str4, html_str5, html_str6, html_str7);
   }
