@@ -1,6 +1,6 @@
 /*
   ESP32_SD_EasyWebSocket.cpp - WebSocket for ESP-WROOM-32 ( ESP32 & SD microSDHC card use)
-  Beta version 1.51.2
+  Beta version 1.60
 
 Copyright (c) 2017 Mgo-tec
 This library improvement collaborator is Mr.Visyeii.
@@ -32,19 +32,6 @@ Copyright (c) 2011-2014 Arduino.  All right reserved.
 Modified by Ivan Grokhotkov, December 2014
 Licensed under the LGPL-2.1
 
-WiFiClientSecure.h
-Copyright (c) 2011 Adrian McEwen.  All right reserved.
-Additions Copyright (C) 2017 Evandro Luis Copercini.
-Licensed under the LGPL-2.1
-
-@file sha1.h
-@date 20.05.2015
-@author Steve Reid <steve@edmweb.com>
-SHA-1 in C
-By Steve Reid <steve@edmweb.com>
-from: http://www.virtualbox.org/svn/vbox/trunk/src/recompiler/tests/sha1.c
-100% Public Domain
-
 SD.h - Included SD card library for esp32
 Copyright 2015-2016 Espressif Systems (Shanghai) PTE LTD
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -54,19 +41,21 @@ Reference Apache License --> http://www.apache.org/licenses/LICENSE-2.0
 
 #include "ESP32_SD_EasyWebSocket.h"
 
-extern "C" {
-#include "sha1/sha1.h"
-}
+WiFiServer __server(80);
 
-const char* GUID_str = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
-
-WiFiClient __client;
-WiFiServer server(80);
-
-HTTPClientStatus1 _currentStatus;
-uint32_t _statusChange;
 SD_EasyWebSocket::SD_EasyWebSocket(){}
 
+//********AP(Router) Connection****
+void SD_EasyWebSocket::EWS_server_begin()
+{
+  // Start the server
+  _currentStatus = _HC_NONE1;
+  __server.begin();
+  Serial.println(F("Server started"));
+
+  _Upgrade_first_on = false;
+  //_WifiConnectTime = millis();
+}
 //********AP(Router) Connection****
 void SD_EasyWebSocket::AP_Connect(const char* ssid, const char* password)
 {
@@ -75,20 +64,19 @@ void SD_EasyWebSocket::AP_Connect(const char* ssid, const char* password)
   Serial.println();
   Serial.print(F("Connecting to "));
   Serial.println(ssid);
-  
+
   WiFi.begin(ssid, password);
-  
+
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
-		yield();
   }
   Serial.println("");
   Serial.println(F("WiFi connected"));
-  
+
   // Start the server
-  _currentStatus = HC_NONE1;
-  server.begin();
+  _currentStatus = _HC_NONE1;
+  __server.begin();
   Serial.println(F("Server started"));
 
   // Print the IP address
@@ -96,6 +84,7 @@ void SD_EasyWebSocket::AP_Connect(const char* ssid, const char* password)
   delay(10);
   _Upgrade_first_on = false;
 }
+//*****************************************
 void SD_EasyWebSocket::SoftAP_setup(const char* ssid, const char* password)
 {
   Serial.begin(115200);
@@ -103,19 +92,19 @@ void SD_EasyWebSocket::SoftAP_setup(const char* ssid, const char* password)
   Serial.println();
   Serial.print(F("Connecting to "));
   Serial.println(ssid);
-  
+
   WiFi.mode(WIFI_AP);
-   
+ 
   WiFi.softAP(ssid, password);
-  
+
   delay(1000);
-   
+
   IPAddress myIP = WiFi.softAPIP();
   Serial.print(F("SoftAP IP address: "));  Serial.println(myIP);
-  
+
   // Start the server
-  _currentStatus = HC_NONE1;
-  server.begin();
+  _currentStatus = _HC_NONE1;
+  __server.begin();
   Serial.println(F("Server started"));
 
   // Print the IP address
@@ -126,8 +115,8 @@ void SD_EasyWebSocket::SoftAP_setup(const char* ssid, const char* password)
 //*********handleClient***************
 void SD_EasyWebSocket::handleClient()
 {
-  if (_currentStatus == HC_NONE1) {
-    WiFiClient _local_client = server.available();
+  if (_currentStatus == _HC_NONE1) {
+    WiFiClient _local_client = __server.available();
     if (!_local_client) {
       return;
     }
@@ -137,54 +126,52 @@ void SD_EasyWebSocket::handleClient()
 #endif
 
     __client = _local_client;
-    _currentStatus = HC_WAIT_READ1;
+    _currentStatus = _HC_WAIT_READ1;
     _statusChange = millis();
   }
 
   if (!__client.connected()) {
     __client = WiFiClient();
-    _currentStatus = HC_NONE1;
+    _currentStatus = _HC_NONE1;
     return;
   }
 
   // Wait for data from client to become available
-  if (_currentStatus == HC_WAIT_READ1) {
+  if (_currentStatus == _HC_WAIT_READ1) {
     if (!__client.available()) {
       if (millis() - _statusChange > HTTP_MAX_DATA_WAIT) {
         __client = WiFiClient();
-        _currentStatus = HC_NONE1;
+        _currentStatus = _HC_NONE1;
       }
-      yield();
       return;
     }
 
     if (!__client.connected()) {
       __client = WiFiClient();
-      _currentStatus = HC_NONE1;
+      _currentStatus = _HC_NONE1;
       return;
     } else {
-      _currentStatus = HC_WAIT_CLOSE1;
+      _currentStatus = _HC_WAIT_CLOSE1;
       _statusChange = millis();
       return;
     }
   }
 
-  if (_currentStatus == HC_WAIT_CLOSE1) {
+  if (_currentStatus == _HC_WAIT_CLOSE1) {
     if (millis() - _statusChange > HTTP_MAX_CLOSE_WAIT) {
       __client = WiFiClient();
-      _currentStatus = HC_NONE1;
+      _currentStatus = _HC_NONE1;
     } else {
-      yield();
       return;
     }
   }
 }
-//*********handleClient***************
+//****************************************
 bool SD_EasyWebSocket::Get_Http_Req_Status(){
   String req;
   String hash_req_key;
   _GetLoopTime = millis();
-  
+
   if(!_WS_on){
     handleClient();
   }else{
@@ -219,7 +206,7 @@ bool SD_EasyWebSocket::Get_Http_Req_Status(){
                 break;
               }
             }
-						yield();
+						delay(1);
           }
           break;
         case 1:
@@ -236,7 +223,7 @@ bool SD_EasyWebSocket::Get_Http_Req_Status(){
           }
           break;
       }
-	  	yield();
+	  	delay(1);
     }
   }
   return false;
@@ -265,7 +252,7 @@ bool SD_EasyWebSocket::http_resp(){
       _Android_or_iPad = 'P';
     }
     Serial.println(req);
-    yield();
+    delay(1);
   }
   req = "";
 
@@ -277,7 +264,7 @@ bool SD_EasyWebSocket::http_resp(){
   __client.print(F("HTTP/1.1 200 OK\r\n"));
   __client.print(F("Content-Type:text/html\r\n"));
   __client.print(F("Connection:close\r\n\r\n"));
-  
+
   return false;
 }
 //********hand shake time out *****************
@@ -301,15 +288,14 @@ void SD_EasyWebSocket::EWS_HandShake_main(uint8_t sel, uint8_t cs_SD, const char
   String req;
   String hash_req_key;
   _GetLoopTime = millis();
-  
+
   while(__client){
-    
     if( SD_EasyWebSocket::http_resp() ) break;
 
     //SD.begin(cs_SD, SPI, 40000000, "/sd");
-    SPI.setFrequency(40000000);
-    SPI.setDataMode(SPI_MODE0);
-      
+    SPI.setFrequency( 40000000 );
+    SPI.setDataMode( SPI_MODE0 );
+
     //size_t totalSizeH1 = HTML_head_F1.size();
     //size_t totalSizeH2 = HTML_head_F2.size();
     //size_t totalSize1 = HTML_1.size();
@@ -317,49 +303,42 @@ void SD_EasyWebSocket::EWS_HandShake_main(uint8_t sel, uint8_t cs_SD, const char
 
     File HTML_head_F1, HTML_head_F2, HTML_1, HTML_2;
 
-    HTML_head_F1 = SD_EasyWebSocket::SD_open(head_file1);
-    if(HTML_head_F1 == 0) return;
-
-    if(sel >= 2){
-      HTML_head_F2 = SD_EasyWebSocket::SD_open(head_file2);
-      if(HTML_head_F2 == 0) return;
-    }
-    if(sel >= 1 && sel <= 3){
-      HTML_1 = SD_EasyWebSocket::SD_open(html_file1);
-      if(HTML_1 == 0) return;
-      HTML_2 = SD_EasyWebSocket::SD_open(html_file2);
-      if(HTML_2 == 0) return;
-    }
-
+    HTML_head_F1 = SD_EasyWebSocket::SD_open( head_file1 );
+    if( HTML_head_F1 == 0 ) return;
     SD_EasyWebSocket::SD_Client_Write( HTML_head_F1, head_file1 );
+    //SDカードライブラリの場合、ファイルを５以上開くとエラーになるので、必ず毎回閉じておく
+    HTML_head_F1.close();
 
-    if(sel >= 2){
-      __client.print(res_LIP);
+    if( sel >= 2 ){
+      HTML_head_F2 = SD_EasyWebSocket::SD_open( head_file2 );
+      if( HTML_head_F2 == 0 ) return;
+      __client.print( res_LIP );
       SD_EasyWebSocket::SD_Client_Write( HTML_head_F2, head_file2 );
-    }
-    if(sel >= 1 && sel <= 3){
-      SD_EasyWebSocket::SD_Client_Write( HTML_1, html_file1 );
-    }
-
-    __client.print(res_html1);
-    __client.print(res_html2);
-    __client.print(res_html3);
-    if(sel == 0 || sel >= 3){
-      __client.print(res_html4);
-      __client.print(res_html5);
-      __client.print(res_html6);
-      __client.print(res_html7);
-    }
-    if(sel >= 1 && sel <= 3){
-      SD_EasyWebSocket::SD_Client_Write( HTML_2, html_file2 );
-      HTML_1.close();
-      HTML_2.close();
-    }
-    if(sel >= 2){
       HTML_head_F2.close();
     }
 
-    HTML_head_F1.close();
+    if( sel >= 1 && sel <= 3 ){
+      HTML_1 = SD_EasyWebSocket::SD_open( html_file1 );
+      if( HTML_1 == 0 ) return;
+      SD_EasyWebSocket::SD_Client_Write( HTML_1, html_file1 );
+      HTML_1.close();
+    }
+
+    __client.print( res_html1 );
+    __client.print( res_html2 );
+    __client.print( res_html3 );
+    if( sel == 0 || sel >= 3 ){
+      __client.print( res_html4 );
+      __client.print( res_html5 );
+      __client.print( res_html6 );
+      __client.print( res_html7 );
+    }
+    if( sel >= 1 && sel <= 3 ){
+      HTML_2 = SD_EasyWebSocket::SD_open( html_file2 );
+      if( HTML_2 == 0 ) return;
+      SD_EasyWebSocket::SD_Client_Write( HTML_2, html_file2 );
+      HTML_2.close();
+    }
 
     res_html1 = "";
     res_html2 = "";
@@ -369,16 +348,14 @@ void SD_EasyWebSocket::EWS_HandShake_main(uint8_t sel, uint8_t cs_SD, const char
     res_html6 = "";
     res_html7 = "";
 
-    Serial.println(F("---------------------HTTP response complete"));
+    Serial.println( F("---------------------HTTP response complete") );
 
     __client.flush();
     delay(10);
-
     __client.stop();
-
     delay(10);
 
-    Serial.println(F("\n-------GET HTTP client stop"));
+    Serial.println( F("\n-------GET HTTP client stop") );
     req = "";
     _Ini_html_on = 1;
     _GetLoopTime = millis();
@@ -392,16 +369,13 @@ void SD_EasyWebSocket::EWS_HandShake_main(uint8_t sel, uint8_t cs_SD, const char
 //********Client write from SD*********************
 void SD_EasyWebSocket::SD_Client_Write(File SDfile, const char* file_name){
   if (SDfile == 0) {
-    Serial.printf("%s File not found\n",file_name);
     return;
   }else{
-    Serial.printf("%s File found. OK!\n",file_name);
-    
     //size_t totalSize = SDfile.size();
     char c = 0x20;
     char c_print_buff[256];
     uint16_t index_count = 0;
-    
+
     if(__client){    
       while(c!='\0'){
         c= SDfile.read();
@@ -413,7 +387,7 @@ void SD_EasyWebSocket::SD_Client_Write(File SDfile, const char* file_name){
           Serial.print('.');
           index_count = 0;
         }
-        yield();
+        delay(1);
       }
     }
 
@@ -442,17 +416,16 @@ File SD_EasyWebSocket::SD_open(const char *filename){
 void SD_EasyWebSocket::EWS_HandShake(const char* HTML_file, String res_html1, String res_html2, String res_html3, String res_html4, String res_html5, String res_html6, String res_html7)
 {
   bool req_status = SD_EasyWebSocket::Get_Http_Req_Status();
-  
+
   if(req_status == true){
     SD_EasyWebSocket::EWS_HandShake_main(0, 5, HTML_file, "", "", "", IPAddress(0,0,0,0), res_html1, res_html2, res_html3, res_html4, res_html5, res_html6, res_html7);
   }
 }
-
 //********WebSocket Hand Shake (for devided HTML files)****************
 void SD_EasyWebSocket::EWS_Dev_HandShake(const char* HTML_head_file, const char* HTML_file1, String res_html1, String res_html2, String res_html3, const char* HTML_file2)
 {
   bool req_status = SD_EasyWebSocket::Get_Http_Req_Status();
-  
+
   if(req_status == true){
     SD_EasyWebSocket::EWS_HandShake_main(1, 5, HTML_head_file, "", HTML_file1, HTML_file2, IPAddress(0,0,0,0), res_html1, res_html2, res_html3, "", "", "", "");
   }
@@ -461,7 +434,7 @@ void SD_EasyWebSocket::EWS_Dev_HandShake(const char* HTML_head_file, const char*
 void SD_EasyWebSocket::EWS_Dev_AutoLIP_HandShake(const char* HTML_head_file1, IPAddress res_LIP, const char* HTML_head_file2, const char* HTML_file1, String res_html1, String res_html2, String res_html3, String res_html4, String res_html5, String res_html6, String res_html7, const char* HTML_file2)
 {
   bool req_status = SD_EasyWebSocket::Get_Http_Req_Status();
-  
+
   if(req_status == true){
     SD_EasyWebSocket::EWS_HandShake_main(3, 5, HTML_head_file1, HTML_head_file2, HTML_file1, HTML_file2, res_LIP, res_html1, res_html2, res_html3, res_html4, res_html5, res_html6, res_html7);
   }
@@ -472,7 +445,7 @@ void SD_EasyWebSocket::EWS_HTTP_Responce()
   String req;
   String hash_req_key;
   uint32_t LoopTime = millis();
-  
+
   if(_Upgrade_first_on != true){
     handleClient();
   }
@@ -508,16 +481,16 @@ void SD_EasyWebSocket::EWS_HTTP_Responce()
             Serial.print(F("hash_req_key ="));
             Serial.println(hash_req_key);
           }
-					yield();
+					delay(1);
         }
-  
+
         delay(10);
         req ="";
-  
+
         char h_resp_key[29];
 
         SD_EasyWebSocket::Hash_Key(hash_req_key, h_resp_key);
-        
+
         Serial.print(F("h_resp_key = "));
         Serial.println(h_resp_key);
         String str;
@@ -531,16 +504,16 @@ void SD_EasyWebSocket::EWS_HTTP_Responce()
         }
 
         str += "\r\n\r\n";
-        
+
         Serial.println(F("\n--------------------WebSocket HTTP Response Send"));
         Serial.println(str);
         __client.print(str);
         str = "";
-  
+
         _WS_on = 1;
         Serial.println(F("-------------------WebSocket Response Complete!"));
         break;
-  
+
       }else if(req.indexOf("favicon") != -1){
         SD_EasyWebSocket::Favicon_Response(req, 0, 0, 0);
         LoopTime = millis();
@@ -551,7 +524,7 @@ void SD_EasyWebSocket::EWS_HTTP_Responce()
         Serial.print(req);
         while(__client.available()){
           Serial.write(__client.read());
-					yield();
+					delay(1);
         }
         delay(5);
         __client.stop();
@@ -562,10 +535,9 @@ void SD_EasyWebSocket::EWS_HTTP_Responce()
         LoopTime = millis();
       }
     }
-		yield();
+		delay(1);
   }
 }
-
 //************Hash sha1 base64 encord**************************
 void SD_EasyWebSocket::Hash_Key(String h_req_key, char* h_resp_key)
 {
@@ -580,10 +552,10 @@ void SD_EasyWebSocket::Hash_Key(String h_req_key, char* h_resp_key)
   uint8_t i, j;
   i=0;
   j=0;
-  
+
   String merge_str;
 
-  merge_str = h_req_key + String(GUID_str);
+  merge_str = h_req_key + String(_GUID_str);
   Serial.println(F("--------------------Hash key Generation"));
   Serial.print(F("merge_str ="));
   Serial.println(merge_str);
@@ -594,11 +566,11 @@ void SD_EasyWebSocket::Hash_Key(String h_req_key, char* h_resp_key)
 
   for( i = 0; i < 20; i++) {
     hash_six[j] = hash[i]>>2;
-    
+
     hash_six[j+1] = hash[i+1] >> 4;
     bitWrite(hash_six[j+1], 4, bitRead(hash[i],0));
     bitWrite(hash_six[j+1], 5, bitRead(hash[i],1));
-    
+
     if(j+2 < 26){
       hash_six[j+2] = hash[i+2] >> 6;
       bitWrite(hash_six[j+2], 2, bitRead(hash[i+1],0));
@@ -612,7 +584,7 @@ void SD_EasyWebSocket::Hash_Key(String h_req_key, char* h_resp_key)
       dummy_h2 = dummy_h2 >>2;
       hash_six[j+2] = dummy_h1 | dummy_h2;
     }
-    
+
     if( j+3 < 27 ){
       hash_six[j+3] = hash[i+2];
       bitWrite(hash_six[j+3], 6, 0);
@@ -620,18 +592,18 @@ void SD_EasyWebSocket::Hash_Key(String h_req_key, char* h_resp_key)
     }else if(j+3 == 27){
       hash_six[j+3] = '=';
     }
-    
+
     h_resp_key[j] = Base64[hash_six[j]];
     h_resp_key[j+1] = Base64[hash_six[j+1]];
     h_resp_key[j+2] = Base64[hash_six[j+2]];
-    
+
     if(j+3==27){
       h_resp_key[j+3] = Base64[64];
       break;
     }else{
       h_resp_key[j+3] = Base64[hash_six[j+3]];
     }
-    
+
     i = i + 2;
     j = j + 4;
   }
@@ -644,12 +616,12 @@ void SD_EasyWebSocket::Hash_Key(String h_req_key, char* h_resp_key)
   }
   Serial.println();
 }
-  
+//***************************************** 
 void SD_EasyWebSocket::EWS_ESP8266_Str_SEND(String str, String id)
 {
   SD_EasyWebSocket::EWS_ESP32_Str_SEND(str, id);
 }
-
+//*****************************************
 void SD_EasyWebSocket::EWS_ESP32_Str_SEND(String str, String id)
 {
   str += '|' + id + '|';
@@ -657,12 +629,12 @@ void SD_EasyWebSocket::EWS_ESP32_Str_SEND(String str, String id)
   __client.write(str.length());
   __client.print(str); 
 }
-
+//*****************************************
 String SD_EasyWebSocket::EWS_ESP8266CharReceive(uint16_t pTime)
 {
   return SD_EasyWebSocket::EWS_ESP32CharReceive(pTime);
 }
-
+//*****************************************
 String SD_EasyWebSocket::EWS_ESP32CharReceive(uint16_t pTime)
 {
   uint8_t b=0;
@@ -692,7 +664,7 @@ String SD_EasyWebSocket::EWS_ESP32CharReceive(uint16_t pTime)
       }
     }
   }
-  
+
   if(__client.available()){
     b = __client.read();
     if(b == B10000001 || b == B10001010){
@@ -713,10 +685,10 @@ String SD_EasyWebSocket::EWS_ESP32CharReceive(uint16_t pTime)
       for(i=0; i<4; i++){
         mask[i] = __client.read();
       }
-      
+
       uint8_t m_data[data_len];
       char data_c[data_len + 1];
-          
+
       for(i = 0; i<data_len; i++){
         m_data[i] = __client.read();
         data_c[i] = mask[i%4]^m_data[i];
@@ -733,7 +705,7 @@ String SD_EasyWebSocket::EWS_ESP32CharReceive(uint16_t pTime)
       if(data_len == 0){
         while(__client.available()){
           b = __client.read();
-					yield();
+					delay(1);
         }
         Serial.println(F("Closing HandShake OK!"));
       }else{
@@ -754,12 +726,12 @@ String SD_EasyWebSocket::EWS_ESP32CharReceive(uint16_t pTime)
         data_c2[data_len] = '\0';
         Serial.println(F("----Closing Message"));
       }    
-      
+
       delay(1);
       __client.write(B10001000);
       delay(1);
       Serial.println(F("------------------Close Command Send"));
-      
+
       delay(5);
       __client.stop();
       delay(5);
@@ -769,7 +741,7 @@ String SD_EasyWebSocket::EWS_ESP32CharReceive(uint16_t pTime)
       _WS_on = 0;
       _Ini_html_on = 0;
       _Upgrade_first_on = false;
-      
+
       while(__client){
         if(__client.available()){
           String req = __client.readStringUntil('\n');
@@ -779,9 +751,8 @@ String SD_EasyWebSocket::EWS_ESP32CharReceive(uint16_t pTime)
             break;
           }
         }
-				yield();
+				delay(1);
       }
-      
       return str_close;
     }else{
       return String('\0');
@@ -790,7 +761,7 @@ String SD_EasyWebSocket::EWS_ESP32CharReceive(uint16_t pTime)
     return String('\0');
   }
 }
-
+//*****************************************
 String SD_EasyWebSocket::EWS_ESP32DataReceive_SD_write(uint16_t pTime, uint8_t sd_cs, char bin_file[14])
 {
   uint8_t b=0;
@@ -820,7 +791,7 @@ String SD_EasyWebSocket::EWS_ESP32DataReceive_SD_write(uint16_t pTime, uint8_t s
       }
     }
   }
-  
+
   if(__client.available()){
     b = __client.read();
     if(b == B10000001 || b == B10000010 || b == B10001010){
@@ -845,14 +816,14 @@ String SD_EasyWebSocket::EWS_ESP32DataReceive_SD_write(uint16_t pTime, uint8_t s
           _PongLastTime = millis();
           break;
       }
-      
+
       b = __client.read();
       data_len = b - B10000000;
 
       for(i=0; i<4; i++){
         mask[i] = __client.read();
       }
-      
+
       uint8_t m_data[data_len];
       char data_c[data_len + 1];
           
@@ -872,7 +843,7 @@ String SD_EasyWebSocket::EWS_ESP32DataReceive_SD_write(uint16_t pTime, uint8_t s
       if(data_len == 0){
         while(__client.available()){
           b = __client.read();
-					yield();
+					delay(1);
         }
         Serial.println(F("Closing HandShake OK!"));
       }else{
@@ -893,12 +864,12 @@ String SD_EasyWebSocket::EWS_ESP32DataReceive_SD_write(uint16_t pTime, uint8_t s
         data_c2[data_len] = '\0';
         Serial.println(F("----Closing Message"));
       }    
-      
+
       delay(1);
       __client.write(B10001000);
       delay(1);
       Serial.println(F("------------------Close Command Send"));
-      
+
       delay(5);
       __client.stop();
       delay(5);
@@ -908,7 +879,7 @@ String SD_EasyWebSocket::EWS_ESP32DataReceive_SD_write(uint16_t pTime, uint8_t s
       _WS_on = 0;
       _Ini_html_on = 0;
       _Upgrade_first_on = false;
-      
+
       while(__client){
         if(__client.available()){
           String req = __client.readStringUntil('\n');
@@ -918,9 +889,8 @@ String SD_EasyWebSocket::EWS_ESP32DataReceive_SD_write(uint16_t pTime, uint8_t s
             break;
           }
         }
-				yield();
+				delay(1);
       }
-      
       return str_close;
     }
   }else{
@@ -938,7 +908,7 @@ void SD_EasyWebSocket::EWS_ESP32_Binary_Receive(uint8_t sd_cs, char bin_file[14]
   uint32_t iii;
   String str_close = "_close";
   String bin_file_str = String(bin_file);
-  
+
   if(__client.available()){
       if(SD.remove(bin_file)){
         Serial.print(F("Removed ")); Serial.println(bin_file);
@@ -956,11 +926,11 @@ void SD_EasyWebSocket::EWS_ESP32_Binary_Receive(uint8_t sd_cs, char bin_file[14]
       data_len = b - B10000000;
       Serial.print(F("data_len =" ));
       Serial.println(data_len);
-      
+
       uint8_t data_ext_len[8];
       uint16_t data_len16 = 0;
       uint32_t data_len32 = 0;
-      
+
       if(data_len == 126){
         __client.read(data_ext_len, 2);
         data_len16 = data_ext_len[0]<<8 | data_ext_len[1];
@@ -988,9 +958,9 @@ void SD_EasyWebSocket::EWS_ESP32_Binary_Receive(uint8_t sd_cs, char bin_file[14]
       for(i=0; i<4; i++){
         mask[i] = __client.read();
       }
-      
+
       uint32_t Max_len;
-          
+
       if(data_len32 > 0){
         Max_len = data_len32;
       }else if(data_len16>0){
@@ -1010,12 +980,12 @@ void SD_EasyWebSocket::EWS_ESP32_Binary_Receive(uint8_t sd_cs, char bin_file[14]
 
       }
       B_F.close();
-      
+
       Serial.print(F("\ni max = "));
       Serial.println(iii);
   }
 }
-
+//*****************************************
 void SD_EasyWebSocket::EWS_PING_SEND()
 {
   __client.write(B10001001);
@@ -1024,7 +994,7 @@ void SD_EasyWebSocket::EWS_PING_SEND()
   Serial.println();
   Serial.println(F("Ping Send-----------"));
 }
-
+//*****************************************
 String SD_EasyWebSocket::EWS_Body_style(String text_color, String bg_color)
 {
   String str;
@@ -1035,7 +1005,7 @@ String SD_EasyWebSocket::EWS_Body_style(String text_color, String bg_color)
   str += ";'>\r\n";
   return str;
 }
-
+//*****************************************
 String SD_EasyWebSocket::EWS_OnOff_Button(String button_id, uint16_t width, uint16_t height, uint8_t font_size, String f_color, String b_color)
 {
   String str;
@@ -1057,7 +1027,7 @@ String SD_EasyWebSocket::EWS_OnOff_Button(String button_id, uint16_t width, uint
   
   return str;
 }
-
+//*****************************************
 String SD_EasyWebSocket::EWS_On_Momentary_Button(String button_id, String text, uint16_t width, uint16_t height, uint8_t font_size, String f_color, String b_color)
 {
   String str;
@@ -1081,8 +1051,7 @@ String SD_EasyWebSocket::EWS_On_Momentary_Button(String button_id, String text, 
   
   return str;
 }
-
-
+//*****************************************
 String SD_EasyWebSocket::EWS_Touch_Slider_BT(String slider_id, String vbox_id)
 {
   String str;
@@ -1093,7 +1062,7 @@ String SD_EasyWebSocket::EWS_Touch_Slider_BT(String slider_id, String vbox_id)
   str += "').value=this.value;\">\r\n";
   return str;
 }
-
+//*****************************************
 String SD_EasyWebSocket::EWS_Touch_Slider_T(String slider_id, String txt_id)
 {
   String str;
@@ -1104,8 +1073,7 @@ String SD_EasyWebSocket::EWS_Touch_Slider_T(String slider_id, String txt_id)
   str += "').innerHTML=this.value;\">\r\n";
   return str;
 }
-
-
+//*****************************************
 String SD_EasyWebSocket::EWS_Mouse_Slider_BT(String slider_id, String vbox_id)
 {
   String str;
@@ -1116,7 +1084,7 @@ String SD_EasyWebSocket::EWS_Mouse_Slider_BT(String slider_id, String vbox_id)
   str += "').value=this.value;\">\r\n";
   return str;
 }
-
+//*****************************************
 String SD_EasyWebSocket::EWS_Mouse_Slider_T(String slider_id, String txt_id)
 {
   String str;
@@ -1127,7 +1095,7 @@ String SD_EasyWebSocket::EWS_Mouse_Slider_T(String slider_id, String txt_id)
   str += "').innerHTML=this.value;\">\r\n";
   return str;
 }
-
+//*****************************************
 String SD_EasyWebSocket::EWS_Sl_BoxText(String vbox_id, uint16_t width, uint16_t height, uint8_t font_size, String color)
 {
   String str;
@@ -1145,7 +1113,7 @@ String SD_EasyWebSocket::EWS_Sl_BoxText(String vbox_id, uint16_t width, uint16_t
   str += ";' >\r\n";
   return str;
 }
-
+//*****************************************
 String SD_EasyWebSocket::EWS_Sl_Text(String text_id, uint8_t font_size, String color)
 {
   String str;
@@ -1158,7 +1126,7 @@ String SD_EasyWebSocket::EWS_Sl_Text(String text_id, uint8_t font_size, String c
   str += ";' ></span>\r\n";
   return str;
 }
-
+//*****************************************
 String SD_EasyWebSocket::EWS_BrowserReceiveTextTag2(String id, String name, String b_color, uint8_t font_size, String fnt_col)
 {
   String str;
@@ -1176,7 +1144,7 @@ String SD_EasyWebSocket::EWS_BrowserReceiveTextTag2(String id, String name, Stri
   str += "px; color:" + fnt_col + ";'></span></fieldset>\r\n";
   return str;
 }
-
+//*****************************************
 String SD_EasyWebSocket::EWS_Close_Button2(String name, String BG_col, uint16_t width, uint16_t height, String font_col, uint8_t font_size)
 {
   String str;
@@ -1195,7 +1163,7 @@ String SD_EasyWebSocket::EWS_Close_Button2(String name, String BG_col, uint16_t 
   str += "px; border-radius:10px;' onclick='WS_close()'>\r\n";
   return str;
 }
-
+//*****************************************
 String SD_EasyWebSocket::EWS_Window_ReLoad_Button2(String name, String BG_col, uint16_t width, uint16_t height, String font_col, uint8_t font_size)
 {
   String str;
@@ -1214,7 +1182,7 @@ String SD_EasyWebSocket::EWS_Window_ReLoad_Button2(String name, String BG_col, u
   str += "px; border-radius:10px;' onclick='window.location.reload()'>\r\n";
   return str;
 }
-
+//*****************************************
 String SD_EasyWebSocket::EWS_WebSocket_Reconnection_Button2(String name, String BG_col, uint16_t width, uint16_t height, String font_col, uint8_t font_size)
 {
   String str;
@@ -1233,7 +1201,7 @@ String SD_EasyWebSocket::EWS_WebSocket_Reconnection_Button2(String name, String 
   str += "px; border-radius:10px;' onclick='init();'>\r\n";
   return str;
 }
-
+//*****************************************
 String SD_EasyWebSocket::EWS_BrowserSendRate()
 {
   String str;
@@ -1256,7 +1224,7 @@ String SD_EasyWebSocket::EWS_BrowserSendRate()
   str += "</form>\r\n";
   return str;
 }
-
+//*****************************************
 String SD_EasyWebSocket::EWS_ESP32_SendRate(String button_id)
 {    
   String str;
@@ -1281,7 +1249,7 @@ String SD_EasyWebSocket::EWS_ESP32_SendRate(String button_id)
   str += "</form>\r\n";
   return str;
 }
-
+//*****************************************
 String SD_EasyWebSocket::EWS_Status_Text2(String name, String b_color, uint8_t font_size, String f_color)
 {
   String str;
@@ -1299,12 +1267,12 @@ String SD_EasyWebSocket::EWS_Status_Text2(String name, String b_color, uint8_t f
   str += ";' ></span></fieldset>\r\n";
   return str;
 }
-  
+//*****************************************
 String SD_EasyWebSocket::EWS_Canvas_Slider_T(String slider_id, uint16_t width, uint16_t height, String frame_col, String fill_col)
 {
   String str;
   str = "<canvas id='" + slider_id + "' width='" + String(width) + "' height='" + String(height) + "'></canvas>\r\n";
-  
+
   str += "<script type='text/javascript'>\r\n";
   str += "  fnc_" + slider_id + "();\r\n";
   str += "  function fnc_" + slider_id + "(){\r\n";
@@ -1321,7 +1289,7 @@ String SD_EasyWebSocket::EWS_Canvas_Slider_T(String slider_id, uint16_t width, u
 
   str += "    canvas2.addEventListener('touchmove', slider_" + slider_id + ", false);\r\n";
   str += "    canvas2.addEventListener('touchstart', slider_" + slider_id + ", false);\r\n";
-  
+
   str += "    function slider_" + slider_id + "(event3) {\r\n";
   str += "      event3.preventDefault();\r\n";
   str += "      event3.stopPropagation();\r\n";
@@ -1346,7 +1314,7 @@ String SD_EasyWebSocket::EWS_Canvas_Slider_T(String slider_id, uint16_t width, u
   str += "</script>\r\n";
   return str;
 }
-
+//*****************************************
 String SD_EasyWebSocket::EWS_TextBox_Send(String id, String txt, String BT_txt)
 {
   String str;
@@ -1356,152 +1324,7 @@ String SD_EasyWebSocket::EWS_TextBox_Send(String id, String txt, String BT_txt)
   str += "</form>\r\n";
   return str;
 }
-
-String SD_EasyWebSocket::EWS_Web_Get(char* host, String target_ip, uint8_t char_tag, String Final_tag, String Begin_tag, String End_tag, String Paragraph)
-{
-  String str1;
-  String str2;
-  String str3;
-  String ret_str = "";
-
-  delay(5);
-  __client.stop();
-  delay(5);
-  __client.flush();
-  Serial.println(F("--------------------WebSocket Client Stop"));
- 
-  if (__client.connect(host, 80)) {
-    Serial.print(host); Serial.print(F("-------------"));
-    Serial.println(F("connected"));
-    Serial.println(F("--------------------WEB HTTP GET Request"));
-    str1 = "GET " + target_ip + " HTTP/1.1\r\n" + "Host: " + String(host)+"\r\n";
-      
-    char cstr1[str1.length()+1];
-    str1.toCharArray(cstr1, str1.length()+1);
-    const char* cstr2 = "Content-Type: text/html; charset=UTF-8\r\nAccept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8\r\nContent-Language: ja\r\nAccept-Language: ja\r\nAccept-Charset: UTF-8\r\nConnection: close\r\n\r\n";
-
-    __client.write((const char*)cstr1, str1.length());
-    __client.write((const char*)cstr2, strlen(cstr2));
-
-    Serial.println(str1);
-
-  }else {
-    // if you didn't get a connection to the server:
-    Serial.println(F("connection failed"));
-  }
-  String dummy_str;
-  uint16_t from, to;
-  if(__client){
-    Serial.println(F("--------------------WEB HTTP Response"));
-    while(__client.connected()){
-      while (__client.available()) {
-        if(dummy_str.indexOf(Final_tag) < 0){
-          dummy_str = __client.readStringUntil(char_tag);
-          if(dummy_str.indexOf(Begin_tag) != -1){
-            from = dummy_str.indexOf(Begin_tag) + Begin_tag.length();
-            to = dummy_str.indexOf(End_tag);
-            ret_str += Paragraph;
-            ret_str += dummy_str.substring(from,to);
-            ret_str += "  ";
-          }
-          dummy_str = "";
-        }else{
-          break;
-        }
-				yield();
-      }
-			yield();
-    }
-  }
-  ret_str += "\0";
- 
-  delay(5);
-  __client.stop();
-  delay(5);
-  __client.flush();
-  Serial.println(F("--------------------Client Stop"));
- 
-  _WS_on = 0;
-  _Ini_html_on = 0;
-  _Upgrade_first_on = false;
-  
-  return ret_str;
-}
-
-String SD_EasyWebSocket::EWS_https_Web_Get(const char* host, String target_ip, char char_tag, String Final_tag, String Begin_tag, String End_tag, String Paragraph){
-  String str1;
-  String str2;
-  String str3;
-  String ret_str = "";
-
-  delay(10);
-  __client.stop();
-  delay(10);
-  __client.flush();
-  Serial.println(F("-------WebSocket Client Stop"));
-
-  WiFiClientSecure Sec_client;
-  const int httpsPort = 443;
- 
-  if (Sec_client.connect(host, httpsPort)) {
-    Serial.print(host); Serial.print(F("-------------"));
-    Serial.println(F("connected"));
-    Serial.println(F("-------WEB HTTP GET Request"));
-
-    
-    Sec_client.print(String("GET ") + target_ip + " HTTP/1.1\r\n" +
-               "Host: " + host + "\r\n" +
-               "User-Agent: BuildFailureDetectorESP32\r\n" +
-               "Connection: close\r\n\r\n");
-
-    Serial.println(String("GET ") + target_ip + " HTTP/1.1\r\n" +
-               "Host: " + host + "\r\n" +
-               "User-Agent: BuildFailureDetectorESP32\r\n" +
-               "Connection: close\r\n\r\n");
-
-  }else {
-    // if you didn't get a connection to the server:
-    Serial.println("connection failed");
-  }
-  String dummy_str;
-  uint16_t from, to;
-  if(Sec_client){
-    Serial.println(F("-------WEB HTTP Response"));
-    while(Sec_client.connected()){
-      while (Sec_client.available()) {
-        if(dummy_str.indexOf(Final_tag) < 0){
-          dummy_str = Sec_client.readStringUntil(char_tag);
-          if(dummy_str.indexOf(Begin_tag) != -1){
-            from = dummy_str.indexOf(Begin_tag) + Begin_tag.length();
-            to = dummy_str.indexOf(End_tag);
-            ret_str += Paragraph;
-            ret_str += dummy_str.substring(from,to);
-            ret_str += "  ";
-          }
-          dummy_str = "";
-        }else{
-          break;
-        }
-				yield();
-      }
-	  	yield();
-    }
-  }
-  ret_str += "\0";
-
-  delay(10);
-  Sec_client.stop();
-  delay(10);
-  Sec_client.flush();
-  Serial.println(F("-------Client Stop"));
-
-  _WS_on = 0;
-  _Ini_html_on = 0;
-  _Upgrade_first_on = false;
-  
-  return ret_str;
-}
-
+//********************************************
 bool SD_EasyWebSocket::HTTP_SD_Pic_Send(const char* Serv, const char* dir)
 {
   String req = "";
@@ -1512,11 +1335,11 @@ bool SD_EasyWebSocket::HTTP_SD_Pic_Send(const char* Serv, const char* dir)
   uint32_t iii;
   String cut_str = " HTTP/1.1";
   bool ret_send = false;
-  
+
   if(!_WS_on){
     handleClient();
   }
-  
+
   while(__client){
     if(__client.available()){
       b = __client.read();
@@ -1570,13 +1393,12 @@ bool SD_EasyWebSocket::HTTP_SD_Pic_Send(const char* Serv, const char* dir)
           if(iii>1){
             Serial.write(mbit);
           }
-					yield();
         }
         Serial.println(F("----Closing Message"));
         Serial.println();
         while(__client.available()){
           Serial.println(__client.read());
-					yield();
+					delay(1);
         }
 
         delay(5);
@@ -1590,7 +1412,7 @@ bool SD_EasyWebSocket::HTTP_SD_Pic_Send(const char* Serv, const char* dir)
         _Ini_html_on = 0;
         _Upgrade_first_on = false;
       }
-      
+
       while(__client){
         if(__client.available()){
           req = __client.readStringUntil('\n');
@@ -1600,7 +1422,7 @@ bool SD_EasyWebSocket::HTTP_SD_Pic_Send(const char* Serv, const char* dir)
             String file_path = req.substring(req.indexOf(dir), req.indexOf(cut_str));
             while(__client.available()){
               Serial.write(__client.read());
-							yield();
+							delay(1);
             }
             Serial.print(F("--------------")); Serial.print(file_path); Serial.println(F(" open & send\n"));
 
@@ -1622,7 +1444,7 @@ bool SD_EasyWebSocket::HTTP_SD_Pic_Send(const char* Serv, const char* dir)
             __client.stop();
             delay(5);
             __client.flush();
-    
+
             Serial.println(F("\n--------------------GET JPEG HTTP client stop"));
             req = "";
             file_path = "";
@@ -1632,23 +1454,24 @@ bool SD_EasyWebSocket::HTTP_SD_Pic_Send(const char* Serv, const char* dir)
             return true;
           }
         }
-				yield();
+				delay(1);
       }
     }
-		yield();
+		delay(1);
   }
   return ret_send;
 }
+//*****************************************
 void SD_EasyWebSocket::Favicon_Response(String str, uint8_t ws, uint8_t ini_htm, uint8_t up_f)
 {
   Serial.println(F("-----------------------Favicon GET Request Received"));
   Serial.println(str);
   while(__client.available()){
     Serial.write(__client.read());
-		yield();
+		delay(1);
   }
   delay(1);
-  
+
   __client.print(F("HTTP/1.1 404 Not Found\r\n"));
   __client.print(F("Connection:close\r\n\r\n"));
 
@@ -1656,9 +1479,9 @@ void SD_EasyWebSocket::Favicon_Response(String str, uint8_t ws, uint8_t ini_htm,
   __client.stop();
   delay(5);
   __client.flush();
-  
+
   Serial.println(F("-----------------Client.stop (by Favicon Request)"));
-  
+
   switch(ws){
     case 1:
       _WS_on = 1;
@@ -1684,12 +1507,31 @@ void SD_EasyWebSocket::Favicon_Response(String str, uint8_t ws, uint8_t ini_htm,
       break;
   }
 }
-
+//************** mbedtls sha1 *****************************************
 void SD_EasyWebSocket::sha1( String str_data, uint8_t hash[20] ){
-  SHA1_CTX ctx;
+  mbedtls_sha1_context ctx;
   uint8_t *data = (uint8_t *)str_data.c_str();
 
-  SHA1Init(&ctx);
-  SHA1Update(&ctx, data, str_data.length());
-  SHA1Final(hash, &ctx);
+  mbedtls_sha1_starts(&ctx);
+  mbedtls_sha1_update(&ctx, data, str_data.length());
+  mbedtls_sha1_finish(&ctx, hash);
+}
+//*****************************************
+uint8_t SD_EasyWebSocket::WebSocket_Status(){
+  return _WS_on;
+}
+//**************************************************************
+String SD_EasyWebSocket::Color_Picker(uint16_t top_px, uint16_t left_px, String default_col, String ID){
+  String str = "";
+
+  str += "<div style='position: relative; top:";
+  str += String(top_px);
+  str += "px; left:";
+  str += String(left_px);
+  str += "px; width:50px; height:0px'>\r\n";
+  str += "<input type='color' value='" + default_col + "' id='" + ID +"' ";
+  str += "onchange='Color_Picker_Send(100, \"" + ID + "\", this.value);'>\r\n";
+  str += "</div>\r\n";
+
+  return str;
 }

@@ -4,6 +4,6 @@
     <head>
       <meta http-equiv='Content-Type' content='text/html; charset=UTF-8'>
       <meta name='viewport' content='width=device-width, initial-scale=0.9, maximum-scale=0.9, user-scalable=no'>
-      <title>ESP32_SD_EasyWebSocket Beta 1.50</title>
+      <title>ESP32_SD_EasyWebSocket Beta 1.60</title>
       <script type='text/javascript'>
         var MyLocal_IP = '

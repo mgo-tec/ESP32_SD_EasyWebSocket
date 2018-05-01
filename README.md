@@ -1,4 +1,4 @@
-# ESP32_SD_EasyWebSocket BETA 1.51.2
+# ESP32_SD_EasyWebSocket BETA 1.60
 Simple library for WebSocket communication with ESP-WROOM-32(ESP32) and smartphone browser.  
 This requires the Arduino core for ESP32 library.  
 https://github.com/espressif/arduino-esp32  
@@ -6,6 +6,13 @@ This use SD card (SPI).
 
 My Blog: https://www.mgo-tec.com
 # Change log:
+(1.60)  
+Added Color_Picker function.  
+Added WebSocket_Status function.  
+I abolished the external sha1 library and included mbedtls / sha1 which is included in Arduino-ESP32.  
+We reviewed the handshake function and opened it so that it immediately closes the file you sent.  
+In addition, we made minor minor overall corrections.  
+  
 (1.51.2)  
 Fix SoftAP_setup class  
 Refresh sample sketch and create for STA_mode and Soft_AP_mode.  
@@ -43,6 +50,13 @@ Added EWS_ESP32_SendRate function to adjust transfer rate of data sent from ESP3
   
   
 # 【更新履歴】(Japanese)
+(1.60)  
+Color_Picker 関数を追加。  
+WebSocket_Status 関数を追加。  
+外部sha1ライブラリを廃止し、Arduino-ESP32同梱の mbedtls/sha1 をインクルードしました。  
+ハンドシェイク関数を見直し、開いて送信したファイルを即閉じるようにしました。  
+その他、全面的な軽微な修正をしました。  
+  
 (1.51.2)  
 SoftAPモード接続の、SoftAP_setupクラスを修正しました。  
 サンプルスケッチを一新し、STA_modeとSoft_AP_mode用を作成。  

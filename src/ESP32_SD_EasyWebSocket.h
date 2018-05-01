@@ -1,6 +1,6 @@
 /*
   ESP32_SD_EasyWebSocket.h - WebSocket for ESP-WROOM-32 ( ESP32 & SD microSDHC card use)
-  Beta version 1.51.2
+  Beta version 1.60
 
 Copyright (c) 2017 Mgo-tec
 This library improvement collaborator is Mr.Visyeii.
@@ -52,22 +52,20 @@ Licensed under the Apache License, Version 2.0 (the "License");
 Reference Apache License --> http://www.apache.org/licenses/LICENSE-2.0
 */
 
-#ifndef _SD_EASYWEBSOCKET_H_INCLUDED
-#define _SD_EASYWEBSOCKET_H_INCLUDED
+#ifndef _ESP32_SD_EASYWEBSOCKET_H_INCLUDED
+#define _ESP32_SD_EASYWEBSOCKET_H_INCLUDED
 
 //#include <Arduino.h>
 #include <WiFi.h>
-#include <WiFiClientSecure.h>
 #include <SD.h>
+#include "mbedtls/sha1.h"
 
-enum HTTPClientStatus1 { HC_NONE1, HC_WAIT_READ1, HC_WAIT_CLOSE1 };
-#define HTTP_MAX_DATA_WAIT 1000 //ms to wait for the client to send the request
-#define HTTP_MAX_CLOSE_WAIT 2000 //ms to wait for the client to close the connection
 class SD_EasyWebSocket
 {
 public:
   SD_EasyWebSocket();
 
+  void EWS_server_begin();
   void AP_Connect(const char* ssid, const char* password);
   void SoftAP_setup(const char* ssid, const char* password);
   void handleClient();
@@ -107,13 +105,24 @@ public:
 	String EWS_Status_Text2(String name, String b_color, uint8_t font_size, String f_color);
   String EWS_Canvas_Slider_T(String slider_id, uint16_t width, uint16_t height, String frame_col, String fill_col);
   String EWS_TextBox_Send(String id, String txt, String BT_txt);
-  String EWS_Web_Get(char* host, String target_ip, uint8_t char_tag, String Final_tag, String Begin_tag, String End_tag, String Paragraph);
-  String EWS_https_Web_Get(const char* host, String target_ip, char char_tag, String Final_tag, String Begin_tag, String End_tag, String Paragraph);
   bool HTTP_SD_Pic_Send(const char* Serv, const char* dir);
   void Favicon_Response(String str, uint8_t ws, uint8_t ini_htm, uint8_t up_f);
   void sha1( String data, uint8_t hash[20] );
-  
+  uint8_t WebSocket_Status();
+  String Color_Picker(uint16_t top_px, uint16_t left_px, String default_col, String ID);
+
 private:
+  enum _HTTPClientStatus1 { _HC_NONE1, _HC_WAIT_READ1, _HC_WAIT_CLOSE1 } _currentStatus;
+  WiFiClient __client;
+
+  uint32_t _statusChange;
+
+
+  #define HTTP_MAX_DATA_WAIT 1000 //ms to wait for the client to send the request
+  #define HTTP_MAX_CLOSE_WAIT 2000 //ms to wait for the client to close the connection
+  
+  const char* _GUID_str = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+
   uint8_t _Ini_html_on = 0;
   uint8_t _WS_on = 0;
   bool _Upgrade_first_on;

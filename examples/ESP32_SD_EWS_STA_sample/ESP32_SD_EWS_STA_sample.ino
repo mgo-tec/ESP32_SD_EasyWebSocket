@@ -1,12 +1,12 @@
 /*  ESP32_SD_WebSocket for ESP-WROOM-32(ESP32) Sample Sketch
-for Beta version 1.51.2
+for Beta version 1.60
 STA mode only
 ---> https://www.mgo-tec.com/blog-entry-easywebsocket-library-beta151-esp32-esp8266.html
 Please rewrite their own the ssid and password.
 
 Use the SD card (SPI), please upload the LIPhead1.txt, LIPhead2.txt, dummy.txt, file to SD/EWS/ folder.
 */
-#include <ESP32_SD_EasyWebSocket.h> //beta ver 1.51.2
+#include <ESP32_SD_EasyWebSocket.h> //beta ver 1.60
   
 const char* ssid = "xxxx"; //ご自分のルーターのSSIDに書き換えてください
 const char* password = "xxxx"; //ご自分のルーターのパスワードに書き換えてください
@@ -71,7 +71,9 @@ void setup()
   
 void loop() {
   websocket_handshake();
-    
+
+  ret_str = ews.EWS_ESP32CharReceive(PingSendTime);
+
   if(ret_str != "_close"){
     if(millis()-ESP32_send_LastTime > ESP32_send_Rate){
       if(cnt > 3){
@@ -81,8 +83,7 @@ void loop() {
       cnt++;
       ESP32_send_LastTime = millis();
     }
-  
-    ret_str = ews.EWS_ESP32CharReceive(PingSendTime);
+
     if(ret_str != "\0"){
       Serial.println(ret_str);
       if(ret_str != "Ping"){
@@ -121,7 +122,6 @@ void loop() {
     ESP32_send_LastTime = millis();
     ret_str = "";
   }
-    yield(); //これ重要かも
 }
 //**************************************************************
 void LED_PWM(byte Led_gr, byte channel, int data_i)
@@ -161,7 +161,7 @@ void LED_PWM(byte Led_gr, byte channel, int data_i)
 //*********************************************
 void websocket_send(uint8_t count, String txt1){
   String str;
-   
+
   switch(cnt){
     case 0:
       str = txt1;
@@ -189,7 +189,7 @@ void websocket_handshake(){
     html_str1 += "<font size=3>\r\n";
     html_str1 += "ESP-WROOM-32(ESP32)\r\n";
     html_str1 += "<br>\r\n";
-    html_str1 += "SD_EasyWebSocket Beta1.51 Sample\r\n";
+    html_str1 += "SD_EasyWebSocket Beta1.60 Sample\r\n";
     html_str1 += "</font><br>\r\n";
     html_str1 += ews.EWS_BrowserSendRate();
     html_str1 += "<br>\r\n";
@@ -199,31 +199,31 @@ void websocket_handshake(){
     html_str1 += "<br>\r\n";
     html_str1 += ews.EWS_Status_Text2("WebSocket Status","#555", 20,"#FF00FF");
     html_str1 += "<br><br>\r\n";
-     
+
     html_str2 += ews.EWS_TextBox_Send("txt1", "Hello Easy WebSocket Beta1.51","送信");
     html_str2 += "<br><br>\r\n";
     html_str2 += "LED \r\n";
     html_str2 += ews.EWS_On_Momentary_Button("ALL", "ALL-ON", 80,25,15,"#000000","#AAAAAA");
     html_str2 += ews.EWS_On_Momentary_Button("OUT", "ALL-OFF", 80,25,15,"#FFFFFF","#555555");
     html_str2 += "<br>\r\n";
-      
+
     html_str3 += "<br>LED BLUE... Dim\r\n";
     html_str3 += ews.EWS_Canvas_Slider_T("BLUE",200,40,"#777777","#0000ff"); //CanvasスライダーはString文字列に２つまでしか入らない
     html_str3 += "<br>LED GREEN Dim\r\n";
     html_str3 += ews.EWS_Canvas_Slider_T("GREEN",200,40,"#777777","#00ff00"); //CanvasスライダーはString文字列に２つまでしか入らない
-      
+
     html_str4 += "<br>LED RED..... Dim\r\n";
     html_str4 += ews.EWS_Canvas_Slider_T("RED",200,40,"#777777","#ff0000"); //CanvasスライダーはString文字列に２つまでしか入らない
     html_str4 += "<br>LED RGB..... Dim\r\n";
     html_str4 += ews.EWS_Canvas_Slider_T("_RGB",200,40,"#777777","#ffff00");
-     
+
     html_str5 += "<br><br>\r\n";
     html_str5 += ews.EWS_WebSocket_Reconnection_Button2("WS-Reconnect", "grey", 200, 40, "black" , 17);
     html_str5 += "<br><br>\r\n";  
     html_str5 += ews.EWS_Close_Button2("WS CLOSE", "#bbb", 150, 40, "red", 17);
     html_str5 += ews.EWS_Window_ReLoad_Button2("ReLoad", "#bbb", 150, 40, "blue", 17);
     html_str5 += "</body></html>";
- 
+
     //WebSocket ハンドシェイク関数
     ews.EWS_HandShake_main(3, cs_SD, HTM_head_file1, HTM_head_file2, HTML_body_file, dummy_file, LIP, html_str1, html_str2, html_str3, html_str4, html_str5, html_str6, html_str7);
   }
